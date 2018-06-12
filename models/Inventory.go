@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/qedus/nds"
@@ -18,6 +19,7 @@ type Inventory struct {
 	Creator     int
 
 	UsageCount int64
+	LastUsed   time.Time
 }
 
 func (i Inventory) ToString(ctx context.Context) (string, error) {
@@ -95,6 +97,12 @@ func FindInventories(ctx context.Context, personality *datastore.Key, lastCursor
 	return inventories, nextCursor
 }
 
+func GloballyLastUsedInventories(ctx context.Context) ([]*Inventory, error) {
+	var inventories []*Inventory
+	_, err := datastore.NewQuery(inventoryEntityKind).Order("-LastUsed").Limit(20).GetAll(ctx, &inventories)
+	return inventories, err
+}
+
 func IncrementUsageCounter(ctx context.Context, fileID string) error {
 	i := new(Inventory)
 	key := inventoryKey(ctx, fileID)
@@ -104,6 +112,8 @@ func IncrementUsageCounter(ctx context.Context, fileID string) error {
 	}
 
 	i.UsageCount += 1
+	i.LastUsed = time.Now()
+
 	_, err = nds.Put(ctx, key, i)
 	return err
 }

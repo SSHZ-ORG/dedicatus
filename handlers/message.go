@@ -114,7 +114,7 @@ func commandFindPersonality(ctx context.Context, args []string) string {
 
 	query := args[1]
 
-	key, err := models.TryFindPersonality(ctx, query)
+	key, err := models.TryFindPersonalityWithKG(ctx, query)
 	if err != nil {
 		log.Errorf(ctx, "%v", err)
 		return "Error"

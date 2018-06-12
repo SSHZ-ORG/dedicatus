@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
@@ -62,4 +63,30 @@ func TryFindPersonality(ctx context.Context, query string) (*datastore.Key, erro
 		return keys[0], nil
 	}
 	return nil, err
+}
+
+func TryFindPersonalityWithKG(ctx context.Context, query string) (*datastore.Key, error) {
+	// Do we know this personality?
+	key, err := TryFindPersonality(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	if key != nil {
+		return key, nil
+	}
+
+	// Let's ask Google
+	KGID, err := utils.TryFindKGEntity(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	if KGID != "" {
+		keys, err := datastore.NewQuery(personalityEntityKind).Filter("KGID = ", KGID).Limit(1).KeysOnly().GetAll(ctx, nil)
+		if len(keys) == 1 {
+			return keys[0], nil
+		}
+		return nil, err
+	}
+
+	return nil, nil
 }

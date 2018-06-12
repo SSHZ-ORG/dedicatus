@@ -20,7 +20,7 @@ func HandleInlineQuery(ctx context.Context, update tgbotapi.Update, bot *tgbotap
 		return nil
 	}
 
-	pKey, err := models.TryFindPersonality(ctx, q)
+	pKey, err := models.TryFindPersonalityWithKG(ctx, q)
 	if err != nil {
 		return err
 	}

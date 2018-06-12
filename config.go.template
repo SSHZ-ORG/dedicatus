@@ -1,0 +1,6 @@
+package dedicatus
+
+const (
+	TgToken     = "12345678:AABBCCDDEEFF"
+	InitAdminID = 88888888
+)

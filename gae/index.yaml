@@ -1,0 +1,8 @@
+indexes:
+
+- kind: Inventory
+  properties:
+  - name: Personality
+  - name: UsageCount
+    direction: desc
+

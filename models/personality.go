@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
 )
@@ -27,13 +28,13 @@ func CreatePersonality(ctx context.Context, KGID string, name string) (*Personal
 		Nickname:      []string{name},
 	}
 
-	_, err := datastore.Put(ctx, key, p)
+	_, err := nds.Put(ctx, key, p)
 	return p, err
 }
 
 func GetPersonality(ctx context.Context, key *datastore.Key) (*Personality, error) {
 	p := new(Personality)
-	err := datastore.Get(ctx, key, p)
+	err := nds.Get(ctx, key, p)
 	return p, err
 }
 

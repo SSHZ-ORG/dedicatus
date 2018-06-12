@@ -6,6 +6,7 @@ import (
 
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/utils"
+	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
@@ -67,7 +68,7 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.Bo
 			}
 		case "/g":
 			if isAdmin {
-				replyMessage = commandRegisterInventory(ctx, args)
+				replyMessage = commandRegisterInventory(ctx, args, userID)
 			} else {
 				replyMessage = "Unauthorized"
 			}
@@ -166,7 +167,7 @@ func commandUpdatePersonalityNickname(ctx context.Context, args []string) string
 	}
 
 	p.Nickname = nicknames.ToSlice()
-	_, err = datastore.Put(ctx, key, p)
+	_, err = nds.Put(ctx, key, p)
 	if err != nil {
 		return err.Error()
 	}
@@ -174,7 +175,7 @@ func commandUpdatePersonalityNickname(ctx context.Context, args []string) string
 	return fmt.Sprintf("Updated Personality %s", p.ToString())
 }
 
-func commandRegisterInventory(ctx context.Context, args []string) string {
+func commandRegisterInventory(ctx context.Context, args []string, userID int) string {
 	if len(args) < 3 {
 		return "Usage: /g <FileID> <Nickname...>\nExample: /g ABCDEFGH 井口裕香 佐藤利奈"
 	}
@@ -195,7 +196,7 @@ func commandRegisterInventory(ctx context.Context, args []string) string {
 		keys = append(keys, key)
 	}
 
-	i, err := models.CreateInventory(ctx, fileID, keys)
+	i, err := models.CreateInventory(ctx, fileID, keys, userID)
 	if err != nil {
 		return err.Error()
 	}

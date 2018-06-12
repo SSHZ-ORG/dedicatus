@@ -3,6 +3,7 @@ package models
 import (
 	"github.com/SSHZ-ORG/dedicatus"
 	"github.com/SSHZ-ORG/dedicatus/utils"
+	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
 )
@@ -20,7 +21,7 @@ func configKey(ctx context.Context) *datastore.Key {
 
 func GetConfig(ctx context.Context) Config {
 	c := Config{}
-	datastore.Get(ctx, configKey(ctx), &c)
+	nds.Get(ctx, configKey(ctx), &c)
 	return c
 }
 
@@ -36,6 +37,6 @@ func CreateConfig(ctx context.Context) error {
 	c.Admins = admins.ToSlice()
 	c.Contributors = contributors.ToSlice()
 
-	_, err := datastore.Put(ctx, configKey(ctx), &c)
+	_, err := nds.Put(ctx, configKey(ctx), &c)
 	return err
 }

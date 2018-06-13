@@ -99,7 +99,7 @@ func FindInventories(ctx context.Context, personality *datastore.Key, lastCursor
 
 func GloballyLastUsedInventories(ctx context.Context) ([]*Inventory, error) {
 	var inventories []*Inventory
-	_, err := datastore.NewQuery(inventoryEntityKind).Order("-LastUsed").Limit(20).GetAll(ctx, &inventories)
+	_, err := datastore.NewQuery(inventoryEntityKind).Order("-LastUsed").Limit(50).GetAll(ctx, &inventories)
 	return inventories, err
 }
 

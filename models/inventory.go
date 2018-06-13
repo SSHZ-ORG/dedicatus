@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/log"
 )
 
 type Inventory struct {
@@ -63,43 +63,43 @@ func CreateInventory(ctx context.Context, fileID string, personality []*datastor
 	return i, err
 }
 
-func FindInventories(ctx context.Context, personality *datastore.Key, lastCursor string) ([]*Inventory, string) {
-	var inventories []*Inventory
-
-	q := datastore.NewQuery(inventoryEntityKind).Filter("Personality = ", personality).Order("-UsageCount")
-
-	if (lastCursor != "") {
-		cursor, err := datastore.DecodeCursor(string(lastCursor))
-		if err == nil {
-			q = q.Start(cursor)
-		}
+func FindInventories(ctx context.Context, personality *datastore.Key, lastCursor string) ([]*Inventory, string, error) {
+	q := datastore.NewQuery(inventoryEntityKind).KeysOnly().Filter("Personality = ", personality).Order("-UsageCount").Limit(50)
+	offset, err := strconv.Atoi(lastCursor)
+	if err != nil {
+		q.Offset(offset)
 	}
 
-	t := q.Limit(50).Run(ctx)
-	for {
-		var i Inventory
-		_, err := t.Next(&i)
-		if err == datastore.Done {
-			break
-		}
-		if err != nil {
-			log.Errorf(ctx, "fetching next Inventory: %v", err)
-			break
-		}
-		inventories = append(inventories, &i)
+	keys, err := q.GetAll(ctx, nil)
+	if err != nil {
+		return nil, "", err
 	}
 
-	nextCursor := ""
-	if cursor, err := t.Cursor(); err == nil {
-		nextCursor = cursor.String()
+	if len(keys) == 0 {
+		return nil, "", nil
 	}
 
-	return inventories, nextCursor
+	inventories := make([]*Inventory, len(keys))
+	err = nds.GetMulti(ctx, keys, inventories)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return inventories, strconv.Itoa(offset + len(keys)), nil
 }
 
 func GloballyLastUsedInventories(ctx context.Context) ([]*Inventory, error) {
-	var inventories []*Inventory
-	_, err := datastore.NewQuery(inventoryEntityKind).Order("-LastUsed").Limit(50).GetAll(ctx, &inventories)
+	keys, err := datastore.NewQuery(inventoryEntityKind).KeysOnly().Order("-LastUsed").Limit(50).GetAll(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(keys) == 0 {
+		return nil, nil
+	}
+
+	inventories := make([]*Inventory, len(keys))
+	err = nds.GetMulti(ctx, keys, inventories)
 	return inventories, err
 }
 

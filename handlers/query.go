@@ -23,7 +23,10 @@ func HandleInlineQuery(ctx context.Context, update tgbotapi.Update, bot *tgbotap
 	q := strings.TrimSpace(query.Query)
 	if len(q) == 0 {
 		inventories, err := models.GloballyLastUsedInventories(ctx)
-		bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+		if err != nil {
+			return err
+		}
+		_, err = bot.AnswerInlineQuery(tgbotapi.InlineConfig{
 			InlineQueryID: query.ID,
 			Results:       constructInlineResults(inventories),
 		})
@@ -35,11 +38,22 @@ func HandleInlineQuery(ctx context.Context, update tgbotapi.Update, bot *tgbotap
 		return err
 	}
 
-	inventories, _ := models.FindInventories(ctx, pKey, query.Offset)
+	if pKey == nil {
+		_, err = bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+			InlineQueryID: query.ID,
+		})
+		return err
+	}
+
+	inventories, nextCursor, err := models.FindInventories(ctx, pKey, query.Offset)
+	if err != nil {
+		return err
+	}
 
 	inlineConfig := tgbotapi.InlineConfig{
 		InlineQueryID: query.ID,
 		Results:       constructInlineResults(inventories),
+		NextOffset:    nextCursor,
 	}
 
 	_, err = bot.AnswerInlineQuery(inlineConfig)

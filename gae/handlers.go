@@ -61,16 +61,12 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 	err := json.Unmarshal(bytes, &update)
 	if err != nil {
 		log.Errorf(ctx, "%v", err)
-		http.Error(w, "Internal Server Error", 500)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
 	}
 
 	log.Infof(ctx, "%v", string(bytes))
 
-	bot, err := utils.NewTgBot(ctx)
-	if err != nil {
-		log.Errorf(ctx, "%v", err)
-		http.Error(w, "Internal Server Error", 500)
-	}
+	bot := utils.NewTgBotNoCheck(ctx)
 
 	if update.Message != nil {
 		err = handlers.HandleMessage(ctx, update, bot)
@@ -86,6 +82,6 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Errorf(ctx, "%v", err)
-		http.Error(w, "Internal Server Error", 500)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }

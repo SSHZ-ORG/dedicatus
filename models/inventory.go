@@ -49,15 +49,15 @@ func GetInventory(ctx context.Context, fileID string) (*Inventory, error) {
 }
 
 func CreateInventory(ctx context.Context, fileID string, personality []*datastore.Key, userID int) (*Inventory, error) {
+	i := new(Inventory)
 	key := inventoryKey(ctx, fileID)
+	nds.Get(ctx, key, i)
 
-	i := &Inventory{
-		FileID:      fileID,
-		FileType:    utils.FileTypeMPEG4GIF,
-		Personality: personality,
-		Creator:     userID,
-		UsageCount:  0,
-	}
+	i.FileID = fileID
+	i.FileType = utils.FileTypeMPEG4GIF
+	i.Personality = personality
+	i.Creator = userID
+	i.LastUsed = time.Now()
 
 	_, err := nds.Put(ctx, key, i)
 	return i, err

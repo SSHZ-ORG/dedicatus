@@ -70,6 +70,11 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 
 	if update.Message != nil {
 		err = handlers.HandleMessage(ctx, update, bot)
+		// Internal errors from this handler should not be retried - log and tell TG we are good.
+		if err != nil {
+			log.Errorf(ctx, "%v", err)
+			return
+		}
 	}
 
 	if update.InlineQuery != nil {

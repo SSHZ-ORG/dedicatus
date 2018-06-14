@@ -10,6 +10,8 @@ A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine
 2. 在任意对话中输入 `@koebuta_bot <姓名>`。
 3. 选！
 4. 重复以上两步若干次，Telegram 就会在输入 `@` 时自动提示 `@koebuta_bot` 了。
+
+`<姓名>` 的部分可以使用空格分隔多个声优。所有指定声优均出现的图才会被返回。
  
 ### 添加未索引的声优 / 给已索引的声优增加别名
 

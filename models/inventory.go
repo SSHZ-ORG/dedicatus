@@ -81,11 +81,18 @@ func CreateInventory(ctx context.Context, fileID string, personality []*datastor
 	return i, err
 }
 
-func FindInventories(ctx context.Context, personality *datastore.Key, lastCursor string) ([]*Inventory, string, error) {
-	q := datastore.NewQuery(inventoryEntityKind).KeysOnly().Filter("Personality = ", personality).Order("-UsageCount").Limit(maxItems)
+func FindInventories(ctx context.Context, personalities []*datastore.Key, lastCursor string) ([]*Inventory, string, error) {
+	q := datastore.NewQuery(inventoryEntityKind).KeysOnly()
+
+	for _, personality := range personalities {
+		q = q.Filter("Personality = ", personality)
+	}
+
+	q = q.Order("-UsageCount").Limit(maxItems)
+
 	offset, err := strconv.Atoi(lastCursor)
 	if err != nil {
-		q.Offset(offset)
+		q = q.Offset(offset)
 	}
 
 	keys, err := q.GetAll(ctx, nil)

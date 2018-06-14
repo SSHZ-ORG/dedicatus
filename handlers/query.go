@@ -6,6 +6,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"golang.org/x/net/context"
+	"google.golang.org/appengine/datastore"
 	"gopkg.in/telegram-bot-api.v4"
 )
 
@@ -20,8 +21,15 @@ func constructInlineResults(inventories []*models.Inventory) []interface{} {
 func HandleInlineQuery(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	query := update.InlineQuery
 
-	q := strings.TrimSpace(query.Query)
-	if len(q) == 0 {
+	rawQs := strings.Split(strings.TrimSpace(query.Query), " ")
+	qs := rawQs[:0]
+	for _, e := range rawQs {
+		if e != "" {
+			qs = append(qs, e)
+		}
+	}
+
+	if len(qs) == 0 {
 		inventories, err := models.GloballyLastUsedInventories(ctx)
 		if err != nil {
 			return err
@@ -33,19 +41,35 @@ func HandleInlineQuery(ctx context.Context, update tgbotapi.Update, bot *tgbotap
 		return err
 	}
 
-	pKey, err := models.TryFindPersonalityWithKG(ctx, q)
-	if err != nil {
-		return err
+	pKeysChan := make(chan *datastore.Key, len(qs))
+	errsChan := make(chan error, len(qs))
+
+	for _, q := range qs {
+		go func(q string) {
+			pKey, err := models.TryFindPersonalityWithKG(ctx, q)
+			pKeysChan <- pKey
+			errsChan <- err
+		}(q)
 	}
 
-	if pKey == nil {
-		_, err = bot.AnswerInlineQuery(tgbotapi.InlineConfig{
-			InlineQueryID: query.ID,
-		})
-		return err
+	var pKeys []*datastore.Key
+	for i := 0; i < len(qs); i++ {
+		err := <-errsChan
+		if err != nil {
+			return err
+		}
+
+		pKey := <-pKeysChan
+		if pKey == nil {
+			_, err = bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+				InlineQueryID: query.ID,
+			})
+			return err
+		}
+		pKeys = append(pKeys, pKey)
 	}
 
-	inventories, nextCursor, err := models.FindInventories(ctx, pKey, query.Offset)
+	inventories, nextCursor, err := models.FindInventories(ctx, pKeys, query.Offset)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,6 @@
 # Dedicatus
 
-A Telegram inline bot that searches GIFs of Seiyuu, running on Google Apps Engine.
+A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine.
 
 ![](https://github.com/SSHZ-ORG/dedicatus/blob/master/docs/media/inline.png)
 
@@ -49,3 +49,41 @@ A Telegram inline bot that searches GIFs of Seiyuu, running on Google Apps Engin
 5. 在 `gae` 目录下 `gcloud app deploy`。
 6. 访问 `https://your-application-id.appspot.com/admin/register`，应当看到一个 `true`。
 7. Profit!
+
+### Some Random Technical Details
+
+#### Why Google App Engine + Golang?
+
+* GAE is (almost) free, and it scales itself.
+* We have a dependency on Knowledge Graph API.
+* Golang on GAE provides very high throughput even with only one instance. Each request runs in a goroutine and we can use all the blocking calls to external APIs.
+* I cannot properly write non-trivial Python applications.
+
+#### Why never use transactions, even in obvious read-modify-write cases?
+
+* We only have these scenarios that require writing to datastore:
+    * Update bot config;
+    * Update Personality;
+    * Insert / update Inventory; 
+    * Update usage count.
+* For all of them, we don't really care about consistency.
+
+#### Why store user roles in one Config entity, instead of using a User Role table?
+
+* So we can store this small entity in memcache, which takes 1ms to come back.
+
+#### Then why don't store config like Telegram API Key together in Config entity?
+
+* So we don't require any parameters in `/admin/register`.
+* So we can dump the whole database and directly upload to another instance.
+
+#### Why all queries are implemented with KeysOnly() + GetMulti()
+
+* No good reason. GetMulti() is powered with memcache so should not be much slower.
+* We may want random drawing of results in the future. This can only be done with KeysOnly() + GetMulti(). 
+
+#### Why use Offset() in pagination?
+
+* Telegram `answerInlineQuery.next_offset` supports max 64 bytes. Datastore Cursor is 100% larger than that.
+* We don't want to store Cursor locally (even in memcache).
+* Most importantly: we don't care if some results are missing / duplicated.

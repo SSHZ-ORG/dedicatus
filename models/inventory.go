@@ -71,8 +71,11 @@ func CreateInventory(ctx context.Context, fileID string, personality []*datastor
 	i.FileID = fileID
 	i.FileType = utils.FileTypeMPEG4GIF
 	i.Personality = personality
-	i.Creator = userID
 	i.LastUsed = time.Now()
+
+	if i.Creator == 0 {
+		i.Creator = userID
+	}
 
 	_, err = nds.Put(ctx, key, i)
 	return i, err

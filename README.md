@@ -9,6 +9,7 @@ A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine
 1. 和 Bot [成为好朋友](https://t.me/koebuta_bot)。
 2. 在任意对话中输入 `@koebuta_bot <姓名>`。
 3. 选！
+4. 重复以上两步若干次，Telegram 就会在输入 `@` 时自动提示 `@koebuta_bot` 了。
  
 ### 添加未索引的声优 / 给已索引的声优增加别名
 
@@ -82,10 +83,10 @@ A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine
 * So we don't require any parameters in `/admin/register`.
 * So we can dump the whole database and directly upload to another instance.
 
-#### Why all queries are implemented with KeysOnly() + GetMulti()
+#### Why all queries are implemented with `KeysOnly()` + `GetMulti()`
 
-* No good reason. GetMulti() is powered with memcache so should not be much slower.
-* We may want random drawing of results in the future. This can only be done with KeysOnly() + GetMulti(). 
+* No good reason. `GetMulti()` is powered with memcache so should not be much slower.
+* We may want random drawing of results in the future. This can only be done with `KeysOnly()` + `GetMulti()`. 
 
 #### Why use Offset() in pagination?
 

@@ -162,7 +162,7 @@ func commandUpdatePersonalityNickname(ctx context.Context, args []string, userID
 	}
 
 	name := args[2]
-	nickname := args[3]
+	nickname := strings.ToLower(args[3])
 
 	key, p, err := models.GetPersonalityByName(ctx, name)
 	if err != nil {

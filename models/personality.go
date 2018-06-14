@@ -58,7 +58,7 @@ func GetPersonalityByKGID(ctx context.Context, KGID string) (*Personality, error
 }
 
 func TryFindPersonality(ctx context.Context, query string) (*datastore.Key, error) {
-	keys, err := datastore.NewQuery(personalityEntityKind).Filter("Nickname = ", query).Limit(1).KeysOnly().GetAll(ctx, nil)
+	keys, err := datastore.NewQuery(personalityEntityKind).Filter("Nickname = ", strings.ToLower(query)).Limit(1).KeysOnly().GetAll(ctx, nil)
 	if len(keys) == 1 {
 		return keys[0], nil
 	}

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -15,7 +16,8 @@ import (
 
 const kgMemcacheKey = "KG1:"
 
-func tryFindKGEntityInternal(ctx context.Context, query string) (string, error) {
+// this returns the `result` node of the found entity.
+func sendKGEntityQuery(ctx context.Context, query string) (map[string]interface{}, error) {
 	s, err := kgsearch.New(&http.Client{
 		Transport: &transport.APIKey{
 			Key:       dedicatus.KGAPIKey,
@@ -23,19 +25,26 @@ func tryFindKGEntityInternal(ctx context.Context, query string) (string, error) 
 		},
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	resp, err := kgsearch.NewEntitiesService(s).Search().Limit(1).Languages("ja", "zh").Query(query).Types("Person").Do()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if len(resp.ItemListElement) > 0 {
-		respID := resp.ItemListElement[0].(map[string]interface{})["result"].(map[string]interface{})["@id"].(string)
-		return strings.TrimPrefix(respID, "kg:"), nil
+		return resp.ItemListElement[0].(map[string]interface{})["result"].(map[string]interface{}), nil
 	}
-	return "", nil
+	return nil, nil
+}
+
+func tryFindKGEntityInternal(ctx context.Context, query string) (string, error) {
+	result, err := sendKGEntityQuery(ctx, query)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimPrefix(result["@id"].(string), "kg:"), nil
 }
 
 func getKGMemcacheKey(query string) string {
@@ -72,4 +81,14 @@ func TryFindKGEntity(ctx context.Context, query string) (string, error) {
 
 	setKGMemcache(ctx, query, result)
 	return result, nil
+}
+
+func GetKGQueryResult(ctx context.Context, query string) (string, error) {
+	// This bypasses memcache
+	result, err := sendKGEntityQuery(ctx, query)
+	if err != nil {
+		return "", err
+	}
+	encoded, err := json.MarshalIndent(result, "", "    ")
+	return string(encoded), err
 }

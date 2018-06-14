@@ -25,6 +25,7 @@ var commandMap = map[string]func(ctx context.Context, args []string, userID int)
 	"/u":  commandUpdatePersonalityNickname,
 	"/g":  commandRegisterInventory,
 	"/c":  commandManageContributors,
+	"/kg": commandQueryKG,
 }
 
 func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
@@ -273,4 +274,16 @@ func commandManageContributors(ctx context.Context, args []string, userID int) (
 	}
 
 	return "Contributors updated", nil
+}
+
+func commandQueryKG(ctx context.Context, args []string, userID int) (string, error) {
+	c := models.GetConfig(ctx)
+	if !c.IsAdmin(userID) {
+		return errorMessageNotAdmin, nil
+	}
+
+	if len(args) != 2 {
+		return "Usage:\n/kg <Query>\nExample: /kg 井口裕香", nil
+	}
+	return utils.GetKGQueryResult(ctx, args[1])
 }

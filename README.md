@@ -40,6 +40,11 @@ A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine
 
 在本项目提交 Issue。
 
+### Admin & Contributor Guides
+
+* [Admin Guide](https://github.com/SSHZ-ORG/dedicatus/wiki/Admin-Guide)
+* [Contributor Guide](https://github.com/SSHZ-ORG/dedicatus/wiki/Contributor-Guide)
+
 ### 部署新实例
 
 1. 找 [BotFather](https://t.me/botfather) 创建一个 Bot。

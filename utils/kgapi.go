@@ -44,6 +44,9 @@ func tryFindKGEntityInternal(ctx context.Context, query string) (string, error) 
 	if err != nil {
 		return "", err
 	}
+	if result == nil {
+		return "", nil
+	}
 	return strings.TrimPrefix(result["@id"].(string), "kg:"), nil
 }
 

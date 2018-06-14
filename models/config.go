@@ -40,3 +40,11 @@ func CreateConfig(ctx context.Context) error {
 	_, err := nds.Put(ctx, configKey(ctx), &c)
 	return err
 }
+
+func (c Config) IsAdmin(userID int) bool {
+	return utils.Contains(c.Admins, userID)
+}
+
+func (c Config) IsContributor(userID int) bool {
+	return utils.Contains(c.Contributors, userID)
+}

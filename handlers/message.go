@@ -9,9 +9,21 @@ import (
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/log"
 	"gopkg.in/telegram-bot-api.v4"
 )
+
+const (
+	errorMessageNotAdmin       = "Only admins can do this, sorry."
+	errorMessageNotContributor = "Only contributors can do this, sorry."
+)
+
+var commandMap = map[string]func(ctx context.Context, args []string, userID int) (string, error){
+	"/me": commandUserInfo,
+	"/n":  commandCreatePersonality,
+	"/s":  commandFindPersonality,
+	"/u":  commandUpdatePersonalityNickname,
+	"/g":  commandRegisterInventory,
+}
 
 func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	message := update.Message
@@ -42,36 +54,22 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.Bo
 
 	if strings.HasPrefix(message.Text, "/") {
 		replyMessage := ""
+		var err error
+
 		args := strings.Split(message.Text, " ")
 		userID := message.From.ID
 
-		config := models.GetConfig(ctx)
-		admins := utils.NewIntSetFromSlice(config.Admins)
-		isAdmin := admins.Contains(userID)
+		if handler, ok := commandMap[args[0]]; ok {
+			replyMessage, err = handler(ctx, args, userID)
+		} else {
+			replyMessage = "Command not recognized."
+		}
 
-		switch args[0] {
-		case "/me":
-			replyMessage = fmt.Sprintf("User %d", userID)
-		case "/n":
-			if isAdmin {
-				replyMessage = commandCreatePersonality(ctx, args)
-			} else {
-				replyMessage = "Unauthorized"
-			}
-		case "/s":
-			replyMessage = commandFindPersonality(ctx, args)
-		case "/u":
-			if isAdmin {
-				replyMessage = commandUpdatePersonalityNickname(ctx, args)
-			} else {
-				replyMessage = "Unauthorized"
-			}
-		case "/g":
-			if isAdmin {
-				replyMessage = commandRegisterInventory(ctx, args, userID)
-			} else {
-				replyMessage = "Unauthorized"
-			}
+		if err != nil {
+			reply := tgbotapi.NewMessage(message.Chat.ID, "Your action triggered an internal server error.")
+			reply.ReplyToMessageID = message.MessageID
+			bot.Send(reply) // Fire and forget
+			return err
 		}
 
 		if replyMessage != "" {
@@ -85,55 +83,79 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.Bo
 	return nil
 }
 
-func commandCreatePersonality(ctx context.Context, args []string) string {
+func commandUserInfo(ctx context.Context, args []string, userID int) (string, error) {
+	c := models.GetConfig(ctx)
+
+	return fmt.Sprintf("User %d\nisAdmin: %v\nisContributor: %v", userID, c.IsAdmin(userID), c.IsContributor(userID)), nil
+}
+
+func commandCreatePersonality(ctx context.Context, args []string, userID int) (string, error) {
+	c := models.GetConfig(ctx)
+	if !c.IsAdmin(userID) {
+		return errorMessageNotAdmin, nil
+	}
+
 	if len(args) != 3 {
-		return "Usage: /n <CanonicalName> <KnowledgeGraphID>\nExample: /n 井口裕香 /m/064m4km"
+		return "Usage: /n <CanonicalName> <KnowledgeGraphID>\nExample: /n 井口裕香 /m/064m4km", nil
 	}
 
 	name := args[1]
 	KGID := args[2]
-	if _, p, _ := models.GetPersonalityByName(ctx, name); p != nil {
-		return fmt.Sprintf("Personality known as %s", p.ToString())
-	}
-	if p, _ := models.GetPersonalityByKGID(ctx, KGID); p != nil {
-		return fmt.Sprintf("Personality known as %s", p.ToString())
-	}
 
-	p, err := models.CreatePersonality(ctx, KGID, name)
+	_, p, err := models.GetPersonalityByName(ctx, name)
 	if err != nil {
-		return err.Error()
+		return "", err
+	}
+	if p != nil {
+		return fmt.Sprintf("Personality known as %s", p.ToString()), nil
 	}
 
-	return fmt.Sprintf("Created Personality %s", p.ToString())
+	p, err = models.GetPersonalityByKGID(ctx, KGID)
+	if err != nil {
+		return "", err
+	}
+	if p != nil {
+		return fmt.Sprintf("Personality known as %s", p.ToString()), nil
+	}
+
+	p, err = models.CreatePersonality(ctx, KGID, name)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("Created Personality %s", p.ToString()), nil
 }
 
-func commandFindPersonality(ctx context.Context, args []string) string {
+func commandFindPersonality(ctx context.Context, args []string, userID int) (string, error) {
 	if len(args) != 2 {
-		return "Usage: /s <Query>\nExample: /s 井口裕香"
+		return "Usage: /s <Query>\nExample: /s 井口裕香", nil
 	}
 
 	query := args[1]
 
 	key, err := models.TryFindPersonalityWithKG(ctx, query)
 	if err != nil {
-		log.Errorf(ctx, "%v", err)
-		return "Error"
+		return "", err
 	}
 	if key == nil {
-		return "Not found"
+		return "Not found", nil
 	}
 
 	p, err := models.GetPersonality(ctx, key)
 	if err != nil {
-		log.Errorf(ctx, "%v", err)
-		return "Error"
+		return "", err
 	}
-	return fmt.Sprintf("Found Personality %s", p.ToString())
+	return fmt.Sprintf("Found Personality %s", p.ToString()), nil
 }
 
-func commandUpdatePersonalityNickname(ctx context.Context, args []string) string {
+func commandUpdatePersonalityNickname(ctx context.Context, args []string, userID int) (string, error) {
+	c := models.GetConfig(ctx)
+	if !c.IsAdmin(userID) {
+		return errorMessageNotAdmin, nil
+	}
+
 	if len(args) != 4 || (args[1] != "add" && args[1] != "delete") {
-		return "Usage: /u add|delete <CanonicalName> <Nickname>\nExample: /u add 井口裕香 知性"
+		return "Usage: /u add|delete <CanonicalName> <Nickname>\nExample: /u add 井口裕香 知性", nil
 	}
 
 	name := args[2]
@@ -141,10 +163,10 @@ func commandUpdatePersonalityNickname(ctx context.Context, args []string) string
 
 	key, p, err := models.GetPersonalityByName(ctx, name)
 	if err != nil {
-		return err.Error()
+		return "", err
 	}
 	if key == nil {
-		return "Personality not found"
+		return "Personality not found", nil
 	}
 
 	nicknames := utils.NewStringSetFromSlice(p.Nickname)
@@ -152,14 +174,14 @@ func commandUpdatePersonalityNickname(ctx context.Context, args []string) string
 	case "add":
 		maybeConflictKey, err := models.TryFindPersonality(ctx, nickname)
 		if err != nil {
-			return err.Error()
+			return "", err
 		}
 		if maybeConflictKey != nil {
 			conflictP, err := models.GetPersonality(ctx, maybeConflictKey)
 			if err != nil {
-				return err.Error()
+				return "", err
 			}
-			return fmt.Sprintf("Will conflict with Personality %s", conflictP.ToString())
+			return fmt.Sprintf("Will conflict with Personality %s", conflictP.ToString()), nil
 		}
 		nicknames.Add(nickname)
 	case "delete":
@@ -169,15 +191,20 @@ func commandUpdatePersonalityNickname(ctx context.Context, args []string) string
 	p.Nickname = nicknames.ToSlice()
 	_, err = nds.Put(ctx, key, p)
 	if err != nil {
-		return err.Error()
+		return "", err
 	}
 
-	return fmt.Sprintf("Updated Personality %s", p.ToString())
+	return fmt.Sprintf("Updated Personality %s", p.ToString()), nil
 }
 
-func commandRegisterInventory(ctx context.Context, args []string, userID int) string {
+func commandRegisterInventory(ctx context.Context, args []string, userID int) (string, error) {
+	c := models.GetConfig(ctx)
+	if !c.IsContributor(userID) {
+		return errorMessageNotContributor, nil
+	}
+
 	if len(args) < 3 {
-		return "Usage: /g <FileID> <Nickname...>\nExample: /g ABCDEFGH 井口裕香 佐藤利奈"
+		return "Usage: /g <FileID> <Nickname...>\nExample: /g ABCDEFGH 井口裕香 佐藤利奈", nil
 	}
 
 	fileID := args[1]
@@ -187,23 +214,26 @@ func commandRegisterInventory(ctx context.Context, args []string, userID int) st
 	for _, nickname := range nicknames {
 		key, err := models.TryFindPersonality(ctx, nickname)
 		if err != nil {
-			return err.Error()
+			return "", err
 		}
 
 		if key == nil {
-			return fmt.Sprintf("Unknown Personality %s", nickname)
+			return fmt.Sprintf("Unknown Personality %s", nickname), nil
 		}
 		keys = append(keys, key)
 	}
 
-	i, err := models.CreateInventory(ctx, fileID, keys, userID)
+	i, err := models.CreateInventory(ctx, fileID, keys, userID, c)
 	if err != nil {
-		return err.Error()
+		if err == models.ErrorOnlyAdminCanUpdateInventory {
+			return "This GIF is already known. Only admins or its creator can modify it now.", nil
+		}
+		return "", err
 	}
 
 	s, err := i.ToString(ctx)
 	if err != nil {
-		return err.Error()
+		return "", err
 	}
-	return fmt.Sprintf("Updated Inventory %s", s)
+	return fmt.Sprintf("Updated Inventory %s", s), nil
 }

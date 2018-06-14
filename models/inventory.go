@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -13,6 +14,10 @@ import (
 )
 
 const maxItems = 50
+
+var (
+	ErrorOnlyAdminCanUpdateInventory = errors.New("Only admins can update an existing GIF.")
+)
 
 type Inventory struct {
 	FileID      string
@@ -50,10 +55,18 @@ func GetInventory(ctx context.Context, fileID string) (*Inventory, error) {
 	return i, err
 }
 
-func CreateInventory(ctx context.Context, fileID string, personality []*datastore.Key, userID int) (*Inventory, error) {
+func CreateInventory(ctx context.Context, fileID string, personality []*datastore.Key, userID int, config Config) (*Inventory, error) {
 	i := new(Inventory)
 	key := inventoryKey(ctx, fileID)
-	nds.Get(ctx, key, i)
+	err := nds.Get(ctx, key, i)
+
+	// This is an existing Inventory, only admins or original creator can update it.
+	if err == nil && !(config.IsAdmin(userID) || i.Creator == userID) {
+		return nil, ErrorOnlyAdminCanUpdateInventory
+	}
+	if err != nil && err != datastore.ErrNoSuchEntity {
+		return nil, err
+	}
 
 	i.FileID = fileID
 	i.FileType = utils.FileTypeMPEG4GIF
@@ -61,7 +74,7 @@ func CreateInventory(ctx context.Context, fileID string, personality []*datastor
 	i.Creator = userID
 	i.LastUsed = time.Now()
 
-	_, err := nds.Put(ctx, key, i)
+	_, err = nds.Put(ctx, key, i)
 	return i, err
 }
 

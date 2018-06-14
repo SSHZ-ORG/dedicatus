@@ -26,7 +26,7 @@ func GetConfig(ctx context.Context) Config {
 }
 
 func SetConfig(ctx context.Context, c Config) error {
-	_, err := nds.Put(ctx, configKey(ctx), c)
+	_, err := nds.Put(ctx, configKey(ctx), &c)
 	return err
 }
 

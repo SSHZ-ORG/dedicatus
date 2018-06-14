@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/SSHZ-ORG/dedicatus/models"
@@ -23,6 +24,7 @@ var commandMap = map[string]func(ctx context.Context, args []string, userID int)
 	"/s":  commandFindPersonality,
 	"/u":  commandUpdatePersonalityNickname,
 	"/g":  commandRegisterInventory,
+	"/c":  commandManageContributors,
 }
 
 func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
@@ -96,7 +98,7 @@ func commandCreatePersonality(ctx context.Context, args []string, userID int) (s
 	}
 
 	if len(args) != 3 {
-		return "Usage: /n <CanonicalName> <KnowledgeGraphID>\nExample: /n 井口裕香 /m/064m4km", nil
+		return "Usage:\n/n <CanonicalName> <KnowledgeGraphID>\nExample: /n 井口裕香 /m/064m4km", nil
 	}
 
 	name := args[1]
@@ -128,7 +130,7 @@ func commandCreatePersonality(ctx context.Context, args []string, userID int) (s
 
 func commandFindPersonality(ctx context.Context, args []string, userID int) (string, error) {
 	if len(args) != 2 {
-		return "Usage: /s <Query>\nExample: /s 井口裕香", nil
+		return "Usage:\n/s <Query>\nExample: /s 井口裕香", nil
 	}
 
 	query := args[1]
@@ -155,7 +157,7 @@ func commandUpdatePersonalityNickname(ctx context.Context, args []string, userID
 	}
 
 	if len(args) != 4 || (args[1] != "add" && args[1] != "delete") {
-		return "Usage: /u add|delete <CanonicalName> <Nickname>\nExample: /u add 井口裕香 知性", nil
+		return "Usage:\n/u add|delete <CanonicalName> <Nickname>\nExample: /u add 井口裕香 知性", nil
 	}
 
 	name := args[2]
@@ -204,7 +206,7 @@ func commandRegisterInventory(ctx context.Context, args []string, userID int) (s
 	}
 
 	if len(args) < 3 {
-		return "Usage: /g <FileID> <Nickname...>\nExample: /g ABCDEFGH 井口裕香 佐藤利奈", nil
+		return "Usage:\n/g <FileID> <Nickname...>\nExample: /g ABCDEFGH 井口裕香 佐藤利奈", nil
 	}
 
 	fileID := args[1]
@@ -236,4 +238,39 @@ func commandRegisterInventory(ctx context.Context, args []string, userID int) (s
 		return "", err
 	}
 	return fmt.Sprintf("Updated Inventory %s", s), nil
+}
+
+func commandManageContributors(ctx context.Context, args []string, userID int) (string, error) {
+	c := models.GetConfig(ctx)
+	if !c.IsAdmin(userID) {
+		return errorMessageNotAdmin, nil
+	}
+
+	if len(args) != 3 || (args[1] != "add" && args[1] != "delete") {
+		return "Usage:\n/c add|delete <UserId>\nExample: /c add 88888888", nil
+	}
+
+	newContributor, err := strconv.Atoi(args[2])
+	if err != nil {
+		return "Illegal UserID.", nil
+	}
+
+	contributors := utils.NewIntSetFromSlice(c.Contributors)
+	switch args[1] {
+	case "add":
+		if !contributors.Add(newContributor) {
+			return "Is already a contributor.", nil
+		}
+	case "delete":
+		if !contributors.Remove(newContributor) {
+			return "Is not a contributor.", nil
+		}
+	}
+
+	c.Contributors = contributors.ToSlice()
+	if err = models.SetConfig(ctx, c); err != nil {
+		return "", err
+	}
+
+	return "Contributors updated", nil
 }

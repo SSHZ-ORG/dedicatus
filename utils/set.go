@@ -79,6 +79,16 @@ func (set *IntSet) Add(e int) bool {
 	return true
 }
 
+func (set *IntSet) Remove(e int) bool {
+	_, found := (*set)[e]
+	if !found {
+		return false
+	}
+
+	delete(*set, e)
+	return true
+}
+
 func (set *IntSet) Contains(s ...int) bool {
 	for _, e := range s {
 		if _, ok := (*set)[e]; !ok {

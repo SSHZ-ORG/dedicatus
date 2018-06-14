@@ -12,6 +12,8 @@ import (
 	"google.golang.org/appengine/datastore"
 )
 
+const maxItems = 50
+
 type Inventory struct {
 	FileID      string
 	FileType    string
@@ -64,7 +66,7 @@ func CreateInventory(ctx context.Context, fileID string, personality []*datastor
 }
 
 func FindInventories(ctx context.Context, personality *datastore.Key, lastCursor string) ([]*Inventory, string, error) {
-	q := datastore.NewQuery(inventoryEntityKind).KeysOnly().Filter("Personality = ", personality).Order("-UsageCount").Limit(50)
+	q := datastore.NewQuery(inventoryEntityKind).KeysOnly().Filter("Personality = ", personality).Order("-UsageCount").Limit(maxItems)
 	offset, err := strconv.Atoi(lastCursor)
 	if err != nil {
 		q.Offset(offset)
@@ -85,11 +87,16 @@ func FindInventories(ctx context.Context, personality *datastore.Key, lastCursor
 		return nil, "", err
 	}
 
-	return inventories, strconv.Itoa(offset + len(keys)), nil
+	newCursor := ""
+	if len(keys) == maxItems {
+		newCursor = strconv.Itoa(offset + maxItems)
+	}
+
+	return inventories, newCursor, nil
 }
 
 func GloballyLastUsedInventories(ctx context.Context) ([]*Inventory, error) {
-	keys, err := datastore.NewQuery(inventoryEntityKind).KeysOnly().Order("-LastUsed").Limit(50).GetAll(ctx, nil)
+	keys, err := datastore.NewQuery(inventoryEntityKind).KeysOnly().Order("-LastUsed").Limit(maxItems).GetAll(ctx, nil)
 	if err != nil {
 		return nil, err
 	}

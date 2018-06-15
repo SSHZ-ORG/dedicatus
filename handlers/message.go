@@ -191,6 +191,7 @@ func commandUpdatePersonalityNickname(ctx context.Context, args []string, userID
 		nicknames.Remove(nickname)
 	}
 
+	models.DeleteFindByNicknameMemcache(ctx, nickname)
 	p.Nickname = nicknames.ToSlice()
 	_, err = nds.Put(ctx, key, p)
 	if err != nil {

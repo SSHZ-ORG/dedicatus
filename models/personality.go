@@ -8,7 +8,42 @@ import (
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/memcache"
 )
+
+const (
+	findByNicknameMemcacheKey = "FPN1:"
+)
+
+func getFindByNicknameMemcacheKey(query string) string {
+	return findByNicknameMemcacheKey + query
+}
+
+func getFindByNicknameMemcache(ctx context.Context, query string) (*datastore.Key, error) {
+	item, err := memcache.Get(ctx, getFindByNicknameMemcacheKey(query))
+	if err != nil {
+		return nil, err
+	}
+	if len(item.Value) == 0 {
+		return nil, nil
+	}
+	return datastore.DecodeKey(string(item.Value))
+}
+
+func setFindByNicknameMemcache(ctx context.Context, query string, result *datastore.Key) {
+	value := []byte{}
+	if result != nil {
+		value = []byte(result.Encode())
+	}
+	memcache.Set(ctx, &memcache.Item{
+		Key:   getFindByNicknameMemcacheKey(query),
+		Value: value,
+	})
+}
+
+func DeleteFindByNicknameMemcache(ctx context.Context, query string) {
+	memcache.Delete(ctx, getFindByNicknameMemcacheKey(query))
+}
 
 type Personality struct {
 	KGID          string
@@ -58,11 +93,21 @@ func GetPersonalityByKGID(ctx context.Context, KGID string) (*Personality, error
 }
 
 func TryFindPersonality(ctx context.Context, query string) (*datastore.Key, error) {
-	keys, err := datastore.NewQuery(personalityEntityKind).Filter("Nickname = ", strings.ToLower(query)).Limit(1).KeysOnly().GetAll(ctx, nil)
-	if len(keys) == 1 {
-		return keys[0], nil
+	if resultFromMemcache, err := getFindByNicknameMemcache(ctx, query); err == nil {
+		return resultFromMemcache, err
 	}
-	return nil, err
+
+	keys, err := datastore.NewQuery(personalityEntityKind).Filter("Nickname = ", strings.ToLower(query)).Limit(1).KeysOnly().GetAll(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var key *datastore.Key
+	if len(keys) == 1 {
+		key = keys[0]
+	}
+	setFindByNicknameMemcache(ctx, query, key)
+	return key, nil
 }
 
 func TryFindPersonalityWithKG(ctx context.Context, query string) (*datastore.Key, error) {

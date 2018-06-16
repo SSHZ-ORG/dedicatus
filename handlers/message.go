@@ -7,7 +7,6 @@ import (
 
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/utils"
-	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
 	"gopkg.in/telegram-bot-api.v4"
@@ -105,28 +104,40 @@ func commandCreatePersonality(ctx context.Context, args []string, userID int) (s
 	name := args[1]
 	KGID := args[2]
 
-	_, p, err := models.GetPersonalityByName(ctx, name)
+	key, p, err := models.GetPersonalityByName(ctx, name)
 	if err != nil {
 		return "", err
 	}
 	if p != nil {
-		return fmt.Sprintf("Personality known as %s", p.ToString()), nil
+		s, err := p.ToString(ctx, key)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("Personality known as %s", s), nil
 	}
 
-	p, err = models.GetPersonalityByKGID(ctx, KGID)
+	key, p, err = models.GetPersonalityByKGID(ctx, KGID)
 	if err != nil {
 		return "", err
 	}
 	if p != nil {
-		return fmt.Sprintf("Personality known as %s", p.ToString()), nil
+		s, err := p.ToString(ctx, key)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("Personality known as %s", s), nil
 	}
 
-	p, err = models.CreatePersonality(ctx, KGID, name)
+	key, p, err = models.CreatePersonality(ctx, KGID, name)
 	if err != nil {
 		return "", err
 	}
 
-	return fmt.Sprintf("Created Personality %s", p.ToString()), nil
+	s, err := p.ToString(ctx, key)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Created Personality %s", s), nil
 }
 
 func commandFindPersonality(ctx context.Context, args []string, userID int) (string, error) {
@@ -136,19 +147,29 @@ func commandFindPersonality(ctx context.Context, args []string, userID int) (str
 
 	query := args[1]
 
-	key, err := models.TryFindPersonalityWithKG(ctx, query)
+	keys, err := models.TryFindPersonalitiesWithKG(ctx, query)
 	if err != nil {
 		return "", err
 	}
-	if key == nil {
+	if len(keys) == 0 {
 		return "Not found", nil
 	}
 
-	p, err := models.GetPersonality(ctx, key)
+	ps, err := models.GetPersonalities(ctx, keys)
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("Found Personality %s", p.ToString()), nil
+
+	var ss []string
+	for i, p := range ps {
+		s, err := p.ToString(ctx, keys[i])
+		if err != nil {
+			return "", err
+		}
+		ss = append(ss, s)
+	}
+
+	return fmt.Sprintf("Found Personality:\n%s", strings.Join(ss, "\n")), nil
 }
 
 func commandUpdatePersonalityNickname(ctx context.Context, args []string, userID int) (string, error) {
@@ -162,9 +183,9 @@ func commandUpdatePersonalityNickname(ctx context.Context, args []string, userID
 	}
 
 	name := args[2]
-	nickname := strings.ToLower(args[3])
+	alias := strings.ToLower(args[3])
 
-	key, p, err := models.GetPersonalityByName(ctx, name)
+	key, _, err := models.GetPersonalityByName(ctx, name)
 	if err != nil {
 		return "", err
 	}
@@ -172,33 +193,27 @@ func commandUpdatePersonalityNickname(ctx context.Context, args []string, userID
 		return "Personality not found", nil
 	}
 
-	nicknames := utils.NewStringSetFromSlice(p.Nickname)
+	var a *models.Alias
 	switch args[1] {
 	case "add":
-		maybeConflictKey, err := models.TryFindPersonality(ctx, nickname)
-		if err != nil {
-			return "", err
-		}
-		if maybeConflictKey != nil {
-			conflictP, err := models.GetPersonality(ctx, maybeConflictKey)
-			if err != nil {
-				return "", err
-			}
-			return fmt.Sprintf("Will conflict with Personality %s", conflictP.ToString()), nil
-		}
-		nicknames.Add(nickname)
+		a, err = models.AddAlias(ctx, alias, key)
 	case "delete":
-		nicknames.Remove(nickname)
+		a, err = models.DeleteAlias(ctx, alias, key)
 	}
 
-	models.DeleteFindByNicknameMemcache(ctx, nickname)
-	p.Nickname = nicknames.ToSlice()
-	_, err = nds.Put(ctx, key, p)
 	if err != nil {
 		return "", err
 	}
 
-	return fmt.Sprintf("Updated Personality %s", p.ToString()), nil
+	if a != nil {
+		s, err := a.ToString(ctx)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("Updated Alias %s", s), nil
+	} else {
+		return fmt.Sprintf("Alias %s no longer exists", alias), nil
+	}
 }
 
 func commandRegisterInventory(ctx context.Context, args []string, userID int) (string, error) {
@@ -216,7 +231,7 @@ func commandRegisterInventory(ctx context.Context, args []string, userID int) (s
 
 	var keys []*datastore.Key
 	for _, nickname := range nicknames {
-		key, err := models.TryFindPersonality(ctx, nickname)
+		key, err := models.TryFindOnlyPersonality(ctx, nickname)
 		if err != nil {
 			return "", err
 		}

@@ -41,35 +41,35 @@ func HandleInlineQuery(ctx context.Context, update tgbotapi.Update, bot *tgbotap
 		return err
 	}
 
-	pKeysChan := make(chan *datastore.Key, len(qs))
+	pKeysChan := make(chan []*datastore.Key, len(qs))
 	errsChan := make(chan error, len(qs))
 
 	for _, q := range qs {
 		go func(q string) {
-			pKey, err := models.TryFindPersonalityWithKG(ctx, q)
-			pKeysChan <- pKey
+			pKeys, err := models.TryFindPersonalitiesWithKG(ctx, q)
+			pKeysChan <- pKeys
 			errsChan <- err
 		}(q)
 	}
 
-	var pKeys []*datastore.Key
+	var flattenKeys []*datastore.Key
 	for i := 0; i < len(qs); i++ {
 		err := <-errsChan
 		if err != nil {
 			return err
 		}
 
-		pKey := <-pKeysChan
-		if pKey == nil {
+		pKeys := <-pKeysChan
+		if len(pKeys) == 0 {
 			_, err = bot.AnswerInlineQuery(tgbotapi.InlineConfig{
 				InlineQueryID: query.ID,
 			})
 			return err
 		}
-		pKeys = append(pKeys, pKey)
+		flattenKeys = append(flattenKeys, pKeys...)
 	}
 
-	inventories, nextCursor, err := models.FindInventories(ctx, pKeys, query.Offset)
+	inventories, nextCursor, err := models.FindInventories(ctx, flattenKeys, query.Offset)
 	if err != nil {
 		return err
 	}

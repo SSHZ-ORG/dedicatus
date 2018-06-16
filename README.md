@@ -75,6 +75,7 @@ A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine
     * Insert / update Inventory; 
     * Update usage count.
 * For all of them, we don't really care about consistency.
+* There is one case where we use transaction though. When creating a new personality and the first alias (CanonicalName), we put the 2 creation into a transaction so we don't result in a broken state.
 
 #### Why store user roles in one Config entity, instead of using a User Role table?
 

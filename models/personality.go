@@ -8,70 +8,56 @@ import (
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/memcache"
 )
-
-const (
-	findByNicknameMemcacheKey = "FPN1:"
-)
-
-func getFindByNicknameMemcacheKey(query string) string {
-	return findByNicknameMemcacheKey + query
-}
-
-func getFindByNicknameMemcache(ctx context.Context, query string) (*datastore.Key, error) {
-	item, err := memcache.Get(ctx, getFindByNicknameMemcacheKey(query))
-	if err != nil {
-		return nil, err
-	}
-	if len(item.Value) == 0 {
-		return nil, nil
-	}
-	return datastore.DecodeKey(string(item.Value))
-}
-
-func setFindByNicknameMemcache(ctx context.Context, query string, result *datastore.Key) {
-	value := []byte{}
-	if result != nil {
-		value = []byte(result.Encode())
-	}
-	memcache.Set(ctx, &memcache.Item{
-		Key:   getFindByNicknameMemcacheKey(query),
-		Value: value,
-	})
-}
-
-func DeleteFindByNicknameMemcache(ctx context.Context, query string) {
-	memcache.Delete(ctx, getFindByNicknameMemcacheKey(query))
-}
 
 type Personality struct {
 	KGID          string
 	CanonicalName string
-	Nickname      []string
 }
 
-func (p Personality) ToString() string {
-	return fmt.Sprintf("kg:%s %s (%s)", p.KGID, p.CanonicalName, strings.Join(p.Nickname, ", "))
+func (p Personality) ToString(ctx context.Context, key *datastore.Key) (string, error) {
+	as, err := findAliasForPersonality(ctx, key)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("kg:%s %s as (%s)", p.KGID, p.CanonicalName, strings.Join(as, ", ")), nil
 }
 
-func CreatePersonality(ctx context.Context, KGID string, name string) (*Personality, error) {
-	key := datastore.NewIncompleteKey(ctx, personalityEntityKind, nil)
-
+func CreatePersonality(ctx context.Context, KGID string, name string) (*datastore.Key, *Personality, error) {
 	p := &Personality{
 		KGID:          KGID,
 		CanonicalName: name,
-		Nickname:      []string{name},
 	}
 
-	_, err := nds.Put(ctx, key, p)
-	return p, err
+	var key *datastore.Key
+
+	err := nds.RunInTransaction(ctx, func(tc context.Context) error {
+		k, err := nds.Put(ctx, datastore.NewIncompleteKey(ctx, personalityEntityKind, nil), p)
+		if err != nil {
+			return err
+		}
+
+		_, err = AddAlias(ctx, p.CanonicalName, k)
+		if err != nil {
+			return err
+		}
+
+		key = k
+		return nil
+	}, &datastore.TransactionOptions{XG: true})
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return key, p, nil
 }
 
-func GetPersonality(ctx context.Context, key *datastore.Key) (*Personality, error) {
-	p := new(Personality)
-	err := nds.Get(ctx, key, p)
-	return p, err
+func GetPersonalities(ctx context.Context, keys []*datastore.Key) ([]*Personality, error) {
+	ps := make([]*Personality, len(keys))
+	err := nds.GetMulti(ctx, keys, ps)
+	return ps, err
 }
 
 func GetPersonalityByName(ctx context.Context, name string) (*datastore.Key, *Personality, error) {
@@ -83,41 +69,34 @@ func GetPersonalityByName(ctx context.Context, name string) (*datastore.Key, *Pe
 	return nil, nil, err
 }
 
-func GetPersonalityByKGID(ctx context.Context, KGID string) (*Personality, error) {
+func GetPersonalityByKGID(ctx context.Context, KGID string) (*datastore.Key, *Personality, error) {
 	var ps []*Personality
 	keys, err := datastore.NewQuery(personalityEntityKind).Filter("KGID = ", KGID).Limit(1).GetAll(ctx, &ps)
 	if len(keys) == 1 {
-		return ps[0], nil
+		return keys[0], ps[0], nil
 	}
-	return nil, err
+	return nil, nil, err
 }
 
-func TryFindPersonality(ctx context.Context, query string) (*datastore.Key, error) {
-	if resultFromMemcache, err := getFindByNicknameMemcache(ctx, query); err == nil {
-		return resultFromMemcache, err
-	}
-
-	keys, err := datastore.NewQuery(personalityEntityKind).Filter("Nickname = ", strings.ToLower(query)).Limit(1).KeysOnly().GetAll(ctx, nil)
+func TryFindOnlyPersonality(ctx context.Context, query string) (*datastore.Key, error) {
+	keys, err := TryFindPersonalitiesByAlias(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-
-	var key *datastore.Key
 	if len(keys) == 1 {
-		key = keys[0]
+		return keys[0], nil
 	}
-	setFindByNicknameMemcache(ctx, query, key)
-	return key, nil
+	return nil, nil
 }
 
-func TryFindPersonalityWithKG(ctx context.Context, query string) (*datastore.Key, error) {
+func TryFindPersonalitiesWithKG(ctx context.Context, query string) ([]*datastore.Key, error) {
 	// Do we know this personality?
-	key, err := TryFindPersonality(ctx, query)
+	keys, err := TryFindPersonalitiesByAlias(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	if key != nil {
-		return key, nil
+	if len(keys) > 0 {
+		return keys, nil
 	}
 
 	// Let's ask Google
@@ -128,7 +107,7 @@ func TryFindPersonalityWithKG(ctx context.Context, query string) (*datastore.Key
 	if KGID != "" {
 		keys, err := datastore.NewQuery(personalityEntityKind).Filter("KGID = ", KGID).Limit(1).KeysOnly().GetAll(ctx, nil)
 		if len(keys) == 1 {
-			return keys[0], nil
+			return keys, nil
 		}
 		return nil, err
 	}

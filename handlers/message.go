@@ -8,6 +8,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"golang.org/x/net/context"
+	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 	"gopkg.in/telegram-bot-api.v4"
 )
@@ -18,13 +19,14 @@ const (
 )
 
 var commandMap = map[string]func(ctx context.Context, args []string, userID int) (string, error){
-	"/me": commandUserInfo,
-	"/n":  commandCreatePersonality,
-	"/s":  commandFindPersonality,
-	"/u":  commandUpdatePersonalityNickname,
-	"/g":  commandRegisterInventory,
-	"/c":  commandManageContributors,
-	"/kg": commandQueryKG,
+	"/start": commandStart,
+	"/me":    commandUserInfo,
+	"/n":     commandCreatePersonality,
+	"/s":     commandFindPersonality,
+	"/u":     commandUpdatePersonalityNickname,
+	"/g":     commandRegisterInventory,
+	"/c":     commandManageContributors,
+	"/kg":    commandQueryKG,
 }
 
 func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
@@ -83,6 +85,10 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.Bo
 	}
 
 	return nil
+}
+
+func commandStart(ctx context.Context, args []string, userID int) (string, error) {
+	return fmt.Sprintf("Dedicatus %s", appengine.VersionID(ctx)), nil
 }
 
 func commandUserInfo(ctx context.Context, args []string, userID int) (string, error) {

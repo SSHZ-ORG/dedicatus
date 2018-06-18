@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/utils"
@@ -327,14 +328,22 @@ func commandStats(ctx context.Context, args []string, userID int) (string, error
 		return "", err
 	}
 
-	var rs []string
-	for i, k := range keys {
-		count, err := models.CountInventories(ctx, k)
-		if err != nil {
-			return "", err
-		}
-		rs = append(rs, fmt.Sprintf("kg:%s %s: %d", ps[i].KGID, ps[i].CanonicalName, count))
+	rs := make([]string, len(ps))
+	errs := make([]error, len(ps))
+	wg := sync.WaitGroup{}
+	wg.Add(len(keys))
+
+	for i := range keys {
+		go func(i int) {
+			count, err := models.CountInventories(ctx, keys[i])
+			if err == nil {
+				rs[i] = fmt.Sprintf("kg:%s %s: %d", ps[i].KGID, ps[i].CanonicalName, count)
+			}
+			errs[i] = err
+			wg.Done()
+		}(i)
 	}
 
+	wg.Wait()
 	return strings.Join(rs, "\n"), nil
 }

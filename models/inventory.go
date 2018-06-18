@@ -147,3 +147,7 @@ func IncrementUsageCounter(ctx context.Context, fileID string) error {
 	_, err = nds.Put(ctx, key, i)
 	return err
 }
+
+func CountInventories(ctx context.Context, personality *datastore.Key) (int, error) {
+	return datastore.NewQuery(inventoryEntityKind).KeysOnly().Filter("Personality = ", personality).Count(ctx)
+}

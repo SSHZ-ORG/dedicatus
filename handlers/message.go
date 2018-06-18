@@ -27,6 +27,7 @@ var commandMap = map[string]func(ctx context.Context, args []string, userID int)
 	"/g":     commandRegisterInventory,
 	"/c":     commandManageContributors,
 	"/kg":    commandQueryKG,
+	"/stats": commandStats,
 }
 
 func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
@@ -308,4 +309,32 @@ func commandQueryKG(ctx context.Context, args []string, userID int) (string, err
 		return "Usage:\n/kg <Query>\nExample: /kg 井口裕香", nil
 	}
 	return utils.GetKGQueryResult(ctx, args[1])
+}
+
+func commandStats(ctx context.Context, args []string, userID int) (string, error) {
+	c := models.GetConfig(ctx)
+	if !c.IsAdmin(userID) {
+		return errorMessageNotAdmin, nil
+	}
+
+	keys, err := models.ListAllPersonalities(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	ps, err := models.GetPersonalities(ctx, keys)
+	if err != nil {
+		return "", err
+	}
+
+	var rs []string
+	for i, k := range keys {
+		count, err := models.CountInventories(ctx, k)
+		if err != nil {
+			return "", err
+		}
+		rs = append(rs, fmt.Sprintf("kg:%s %s: %d", ps[i].KGID, ps[i].CanonicalName, count))
+	}
+
+	return strings.Join(rs, "\n"), nil
 }

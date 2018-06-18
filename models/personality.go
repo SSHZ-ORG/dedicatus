@@ -114,3 +114,7 @@ func TryFindPersonalitiesWithKG(ctx context.Context, query string) ([]*datastore
 
 	return nil, nil
 }
+
+func ListAllPersonalities(ctx context.Context) ([]*datastore.Key, error) {
+	return datastore.NewQuery(personalityEntityKind).KeysOnly().GetAll(ctx, nil)
+}

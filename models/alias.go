@@ -68,7 +68,7 @@ func DeleteAlias(ctx context.Context, alias string, personality *datastore.Key) 
 	k := getAliasKey(ctx, alias)
 	err := nds.Get(ctx, k, a)
 	if err != nil {
-		if err != datastore.ErrNoSuchEntity {
+		if err == datastore.ErrNoSuchEntity {
 			return nil, nil
 		}
 		return nil, err

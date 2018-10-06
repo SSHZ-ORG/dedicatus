@@ -1,4 +1,6 @@
 # Dedicatus
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FSSHZ-ORG%2Fdedicatus.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FSSHZ-ORG%2Fdedicatus?ref=badge_shield)
+
 
 A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine.
 
@@ -96,3 +98,7 @@ A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine
 * Telegram `answerInlineQuery.next_offset` supports max 64 bytes. Datastore Cursor is 100% larger than that.
 * We don't want to store Cursor locally (even in memcache).
 * Most importantly: we don't care if some results are missing / duplicated.
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FSSHZ-ORG%2Fdedicatus.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2FSSHZ-ORG%2Fdedicatus?ref=badge_large)

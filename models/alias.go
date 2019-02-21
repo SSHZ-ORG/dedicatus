@@ -35,6 +35,8 @@ func getAliasKey(ctx context.Context, name string) *datastore.Key {
 }
 
 func TryFindPersonalitiesByAlias(ctx context.Context, query string) ([]*datastore.Key, error) {
+	query = strings.ToLower(query)
+
 	a := new(Alias)
 	err := nds.Get(ctx, getAliasKey(ctx, query), a)
 	if err != nil {
@@ -47,6 +49,8 @@ func TryFindPersonalitiesByAlias(ctx context.Context, query string) ([]*datastor
 }
 
 func AddAlias(ctx context.Context, alias string, personality *datastore.Key) (*Alias, error) {
+	alias = strings.ToLower(alias)
+
 	a := new(Alias)
 	k := getAliasKey(ctx, alias)
 	err := nds.Get(ctx, k, a)
@@ -64,6 +68,8 @@ func AddAlias(ctx context.Context, alias string, personality *datastore.Key) (*A
 }
 
 func DeleteAlias(ctx context.Context, alias string, personality *datastore.Key) (*Alias, error) {
+	alias = strings.ToLower(alias)
+
 	a := new(Alias)
 	k := getAliasKey(ctx, alias)
 	err := nds.Get(ctx, k, a)

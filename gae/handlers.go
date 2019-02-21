@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -18,7 +17,7 @@ import (
 
 func main() {
 	r := mux.NewRouter()
-	r.HandleFunc(fmt.Sprintf("/webhook/%s", dedicatus.TgToken), webhook)
+	r.HandleFunc(utils.TgWebhookPath(dedicatus.TgToken), webhook)
 	r.HandleFunc("/admin/register", register)
 
 	http.Handle("/", r)

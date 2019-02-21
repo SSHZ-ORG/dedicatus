@@ -23,5 +23,5 @@ func NewTgBotNoCheck(ctx context.Context) *tgbotapi.BotAPI {
 }
 
 func RegisterWebhook(ctx context.Context, bot *tgbotapi.BotAPI) (tgbotapi.APIResponse, error) {
-	return bot.SetWebhook(tgbotapi.NewWebhook(fmt.Sprintf("https://%s/webhook/%s", appengine.DefaultVersionHostname(ctx), bot.Token)))
+	return bot.SetWebhook(tgbotapi.NewWebhook(fmt.Sprintf("https://%s%s", appengine.DefaultVersionHostname(ctx), TgWebhookPath(bot.Token))))
 }

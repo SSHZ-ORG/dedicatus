@@ -10,6 +10,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/api/googleapi/transport"
 	"google.golang.org/api/kgsearch/v1"
+	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/memcache"
 	"google.golang.org/appengine/urlfetch"
 )
@@ -71,19 +72,21 @@ func setKGMemcache(ctx context.Context, query, result string) {
 	})
 }
 
-func TryFindKGEntity(ctx context.Context, query string) (string, error) {
+func TryFindKGEntity(ctx context.Context, query string) string {
 	resultFromMemcache := getKGMemcache(ctx, query)
 	if resultFromMemcache != nil {
-		return *resultFromMemcache, nil
+		return *resultFromMemcache
 	}
 
 	result, err := tryFindKGEntityInternal(ctx, query)
 	if err != nil {
-		return "", err
+		// Don't fail the query, just log and return empty result.
+		log.Warningf(ctx, "tryFindKGEntityInternal: %v", err)
+		return ""
 	}
 
 	setKGMemcache(ctx, query, result)
-	return result, nil
+	return result
 }
 
 func GetKGQueryResult(ctx context.Context, query string) (string, error) {

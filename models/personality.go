@@ -100,11 +100,7 @@ func TryFindPersonalitiesWithKG(ctx context.Context, query string) ([]*datastore
 	}
 
 	// Let's ask Google
-	KGID, err := utils.TryFindKGEntity(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	if KGID != "" {
+	if KGID := utils.TryFindKGEntity(ctx, query); KGID != "" {
 		keys, err := datastore.NewQuery(personalityEntityKind).Filter("KGID = ", KGID).Limit(1).KeysOnly().GetAll(ctx, nil)
 		if len(keys) == 1 {
 			return keys, nil

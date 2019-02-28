@@ -52,9 +52,9 @@ A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine
 
 1. 找 [BotFather](https://t.me/botfather) 创建一个 Bot。
 2. 在 BotFather 启用 Inline Mode 和 Inline Feedback。
-3. 复制根目录下的 `config.go.template` 为 `config.go`。
+3. 复制 `config` 目录下的 `config.go.template` 为 `config.go`。
 4. 编辑 `config.go`，设定 Telegram API Key, Knowledge Graph API Key 以及初始 Admin Telegram UID。
-5. 在 `gae` 目录下 `gcloud app deploy`。
+5. `gcloud app deploy`。
 6. 访问 `https://your-application-id.appspot.com/admin/register`，应当看到一个 `true`。
 7. Profit!
 

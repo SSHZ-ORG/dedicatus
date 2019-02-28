@@ -1,4 +1,4 @@
-package dedicatus
+package config
 
 const (
 	TgToken     = "12345678:AABBCCDDEEFF"

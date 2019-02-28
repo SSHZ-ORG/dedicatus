@@ -1,0 +1,14 @@
+runtime: go111
+
+handlers:
+  - url: /admin/.*
+    script: auto
+    secure: always
+    login: admin
+
+  - url: /.*
+    script: auto
+    secure: always
+
+automatic_scaling:
+  min_instances: 1

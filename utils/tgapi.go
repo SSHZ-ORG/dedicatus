@@ -3,7 +3,7 @@ package utils
 import (
 	"fmt"
 
-	"github.com/SSHZ-ORG/dedicatus"
+	"github.com/SSHZ-ORG/dedicatus/config"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
@@ -11,12 +11,12 @@ import (
 )
 
 func NewTgBot(ctx context.Context) (*tgbotapi.BotAPI, error) {
-	return tgbotapi.NewBotAPIWithClient(dedicatus.TgToken, urlfetch.Client(ctx))
+	return tgbotapi.NewBotAPIWithClient(config.TgToken, urlfetch.Client(ctx))
 }
 
 func NewTgBotNoCheck(ctx context.Context) *tgbotapi.BotAPI {
 	return &tgbotapi.BotAPI{
-		Token:  dedicatus.TgToken,
+		Token:  config.TgToken,
 		Client: urlfetch.Client(ctx),
 		Buffer: 100,
 	}

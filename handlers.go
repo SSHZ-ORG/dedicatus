@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/SSHZ-ORG/dedicatus"
+	"github.com/SSHZ-ORG/dedicatus/config"
 	"github.com/SSHZ-ORG/dedicatus/handlers"
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/utils"
@@ -17,7 +17,7 @@ import (
 
 func main() {
 	r := mux.NewRouter()
-	r.HandleFunc(utils.TgWebhookPath(dedicatus.TgToken), webhook)
+	r.HandleFunc(utils.TgWebhookPath(config.TgToken), webhook)
 	r.HandleFunc("/admin/register", register)
 
 	http.Handle("/", r)

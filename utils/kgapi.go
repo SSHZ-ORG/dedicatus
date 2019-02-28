@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SSHZ-ORG/dedicatus"
+	"github.com/SSHZ-ORG/dedicatus/config"
 	"golang.org/x/net/context"
 	"google.golang.org/api/googleapi/transport"
 	"google.golang.org/api/kgsearch/v1"
@@ -21,7 +21,7 @@ const kgMemcacheKey = "KG1:"
 func sendKGEntityQuery(ctx context.Context, query string) (map[string]interface{}, error) {
 	s, err := kgsearch.New(&http.Client{
 		Transport: &transport.APIKey{
-			Key:       dedicatus.KGAPIKey,
+			Key:       config.KGAPIKey,
 			Transport: urlfetch.Client(ctx).Transport,
 		},
 	})

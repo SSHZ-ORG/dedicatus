@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/SSHZ-ORG/dedicatus"
+	"github.com/SSHZ-ORG/dedicatus/config"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
@@ -34,10 +34,10 @@ func CreateConfig(ctx context.Context) error {
 	c := GetConfig(ctx)
 
 	admins := utils.NewIntSetFromSlice(c.Admins)
-	admins.Add(dedicatus.InitAdminID)
+	admins.Add(config.InitAdminID)
 
 	contributors := utils.NewIntSetFromSlice(c.Contributors)
-	contributors.Add(dedicatus.InitAdminID)
+	contributors.Add(config.InitAdminID)
 
 	c.Admins = admins.ToSlice()
 	c.Contributors = contributors.ToSlice()

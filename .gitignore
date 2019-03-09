@@ -1,6 +1,17 @@
-*.DS_STORE
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 
-# IDEA
-.idea/
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+.DS_Store
+/.idea/
 
 config.go

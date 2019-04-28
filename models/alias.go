@@ -100,6 +100,53 @@ func DeleteAlias(ctx context.Context, alias string, personality *datastore.Key) 
 	}
 }
 
+func CopyAlias(ctx context.Context, alias, newAlias string) (*Alias, error) {
+	alias = strings.ToLower(alias)
+	newAlias = strings.ToLower(newAlias)
+
+	a := new(Alias)
+	k := getAliasKey(ctx, alias)
+	err := nds.Get(ctx, k, a)
+	if err != nil {
+		if err == datastore.ErrNoSuchEntity {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	newKey := getAliasKey(ctx, newAlias)
+	a.Name = newAlias
+
+	_, err = nds.Put(ctx, newKey, a)
+	return a, err
+}
+
+func RenameAlias(ctx context.Context, alias, newAlias string) (*Alias, error) {
+	alias = strings.ToLower(alias)
+	newAlias = strings.ToLower(newAlias)
+
+	a := new(Alias)
+	k := getAliasKey(ctx, alias)
+	err := nds.Get(ctx, k, a)
+	if err != nil {
+		if err == datastore.ErrNoSuchEntity {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	newKey := getAliasKey(ctx, newAlias)
+	a.Name = newAlias
+
+	err = nds.RunInTransaction(ctx, func(ctx context.Context) error {
+		if _, err := nds.Put(ctx, newKey, a); err != nil {
+			return err
+		}
+		return nds.Delete(ctx, k)
+	}, &datastore.TransactionOptions{XG: true})
+	return a, err
+}
+
 func findAliasForPersonality(ctx context.Context, personality *datastore.Key) ([]string, error) {
 	keys, err := datastore.NewQuery(aliasEntityKind).KeysOnly().Filter("Personality = ", personality).GetAll(ctx, nil)
 	if err != nil {

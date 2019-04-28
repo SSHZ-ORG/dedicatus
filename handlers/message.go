@@ -25,6 +25,7 @@ var commandMap = map[string]func(ctx context.Context, args []string, userID int)
 	"/n":     commandCreatePersonality,
 	"/s":     commandFindPersonality,
 	"/u":     commandUpdatePersonalityNickname,
+	"/a":     commandEditAlias,
 	"/g":     commandRegisterInventory,
 	"/c":     commandManageContributors,
 	"/kg":    commandQueryKG,
@@ -222,6 +223,41 @@ func commandUpdatePersonalityNickname(ctx context.Context, args []string, userID
 	} else {
 		return fmt.Sprintf("Alias %s no longer exists", alias), nil
 	}
+}
+
+func commandEditAlias(ctx context.Context, args []string, userID int) (string, error) {
+	c := models.GetConfig(ctx)
+	if !c.IsAdmin(userID) {
+		return errorMessageNotAdmin, nil
+	}
+
+	if len(args) != 4 || (args[1] != "cp" && args[1] != "mv") {
+		return "Usage:\n/a cp|mv <Alias> <NewAlias>\nExample: /a cp あやてる てるあや", nil
+	}
+
+	alias := args[2]
+	newAlias := args[3]
+
+	var (
+		a   *models.Alias
+		err error
+	)
+	switch args[1] {
+	case "cp":
+		a, err = models.CopyAlias(ctx, alias, newAlias)
+	case "mv":
+		a, err = models.RenameAlias(ctx, alias, newAlias)
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	s, err := a.ToString(ctx)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Updated Alias %s", s), nil
 }
 
 func commandRegisterInventory(ctx context.Context, args []string, userID int) (string, error) {

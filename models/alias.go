@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/SSHZ-ORG/dedicatus/utils"
+	"github.com/gojp/kana"
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
@@ -39,13 +40,17 @@ func TryFindPersonalitiesByAlias(ctx context.Context, query string) ([]*datastor
 
 	a := new(Alias)
 	err := nds.Get(ctx, getAliasKey(ctx, query), a)
-	if err != nil {
-		if err == datastore.ErrNoSuchEntity {
-			return nil, nil
+	if err == datastore.ErrNoSuchEntity {
+		// Try to normalize it if it contains ヘボン式ローマ字 or カタカナ
+		newQuery := kana.RomajiToHiragana(kana.KanaToRomaji(query))
+		if newQuery != query {
+			err = nds.Get(ctx, getAliasKey(ctx, newQuery), a)
 		}
-		return nil, err
 	}
-	return a.Personality, nil
+	if err == datastore.ErrNoSuchEntity {
+		return nil, nil
+	}
+	return a.Personality, err
 }
 
 func AddAlias(ctx context.Context, alias string, personality *datastore.Key) (*Alias, error) {

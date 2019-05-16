@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/SSHZ-ORG/dedicatus/config"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
-	"gopkg.in/telegram-bot-api.v4"
 )
 
 func NewTgBot(ctx context.Context) (*tgbotapi.BotAPI, error) {

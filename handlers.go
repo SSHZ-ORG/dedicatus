@@ -9,10 +9,10 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/handlers"
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/utils"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/gorilla/mux"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
-	"gopkg.in/telegram-bot-api.v4"
 )
 
 func main() {

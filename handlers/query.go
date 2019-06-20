@@ -8,6 +8,7 @@ import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
 )
 
 func constructInlineResults(inventories []*models.Inventory) []interface{} {
@@ -19,8 +20,18 @@ func constructInlineResults(inventories []*models.Inventory) []interface{} {
 }
 
 func HandleInlineQuery(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
-	query := update.InlineQuery
+	response, err := prepareResponse(ctx, update.InlineQuery)
+	if err != nil {
+		return err
+	}
 
+	log.Debugf(ctx, "AnswerInlineQuery: %+v", *response)
+
+	_, err = bot.AnswerInlineQuery(*response)
+	return err
+}
+
+func prepareResponse(ctx context.Context, query *tgbotapi.InlineQuery) (*tgbotapi.InlineConfig, error) {
 	rawQs := strings.Split(strings.TrimSpace(query.Query), " ")
 	qs := rawQs[:0]
 	for _, e := range rawQs {
@@ -32,13 +43,12 @@ func HandleInlineQuery(ctx context.Context, update tgbotapi.Update, bot *tgbotap
 	if len(qs) == 0 {
 		inventories, err := models.GloballyLastUsedInventories(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		_, err = bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+		return &tgbotapi.InlineConfig{
 			InlineQueryID: query.ID,
 			Results:       constructInlineResults(inventories),
-		})
-		return err
+		}, nil
 	}
 
 	pKeysChan := make(chan []*datastore.Key, len(qs))
@@ -56,30 +66,26 @@ func HandleInlineQuery(ctx context.Context, update tgbotapi.Update, bot *tgbotap
 	for i := 0; i < len(qs); i++ {
 		err := <-errsChan
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		pKeys := <-pKeysChan
 		if len(pKeys) == 0 {
-			_, err = bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+			return &tgbotapi.InlineConfig{
 				InlineQueryID: query.ID,
-			})
-			return err
+			}, nil
 		}
 		flattenKeys = append(flattenKeys, pKeys...)
 	}
 
 	inventories, nextCursor, err := models.FindInventories(ctx, flattenKeys, query.Offset)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	inlineConfig := tgbotapi.InlineConfig{
+	return &tgbotapi.InlineConfig{
 		InlineQueryID: query.ID,
 		Results:       constructInlineResults(inventories),
 		NextOffset:    nextCursor,
-	}
-
-	_, err = bot.AnswerInlineQuery(inlineConfig)
-	return err
+	}, nil
 }

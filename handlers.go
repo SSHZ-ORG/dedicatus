@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -17,7 +18,9 @@ import (
 
 func main() {
 	r := mux.NewRouter()
-	r.HandleFunc(utils.TgWebhookPath(config.TgToken), webhook)
+	for _, token := range config.TgTokens {
+		r.HandleFunc(utils.TgWebhookPath(token), generateWebhook(token))
+	}
 	r.HandleFunc("/admin/register", register)
 
 	http.Handle("/", r)
@@ -34,58 +37,65 @@ func register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bot, err := utils.NewTgBot(ctx)
-	if err != nil {
-		log.Errorf(ctx, "%v", err)
-		http.Error(w, err.Error(), 500)
-		return
-	}
+	var responses [][]byte
 
-	response, err := utils.RegisterWebhook(ctx, bot)
-	if err != nil {
-		log.Errorf(ctx, "%v", err)
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	w.Write(response.Result)
-}
-
-func webhook(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
-
-	bytes, _ := ioutil.ReadAll(r.Body)
-
-	var update tgbotapi.Update
-	err := json.Unmarshal(bytes, &update)
-	if err != nil {
-		log.Errorf(ctx, "%v", err)
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-	}
-
-	log.Infof(ctx, "%v", string(bytes))
-
-	bot := utils.NewTgBotNoCheck(ctx)
-
-	if update.Message != nil {
-		err = handlers.HandleMessage(ctx, update, bot)
-		// Internal errors from this handler should not be retried - log and tell TG we are good.
+	for _, token := range config.TgTokens {
+		bot, err := utils.NewTgBot(ctx, token)
 		if err != nil {
 			log.Errorf(ctx, "%v", err)
+			http.Error(w, err.Error(), 500)
 			return
 		}
+
+		response, err := utils.RegisterWebhook(ctx, bot)
+		if err != nil {
+			log.Errorf(ctx, "%v", err)
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		responses = append(responses, response.Result)
 	}
 
-	if update.InlineQuery != nil {
-		err = handlers.HandleInlineQuery(ctx, update, bot)
-	}
+	_, _ = w.Write(bytes.Join(responses, []byte("\n")))
+}
 
-	if update.ChosenInlineResult != nil {
-		err = handlers.HandleChosenInlineResult(ctx, update, bot)
-	}
+func generateWebhook(token string) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := appengine.NewContext(r)
 
-	if err != nil {
-		log.Errorf(ctx, "%v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		b, _ := ioutil.ReadAll(r.Body)
+
+		var update tgbotapi.Update
+		err := json.Unmarshal(b, &update)
+		if err != nil {
+			log.Errorf(ctx, "%v", err)
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+		}
+
+		log.Infof(ctx, "%v", string(b))
+
+		bot := utils.NewTgBotNoCheck(ctx, token)
+
+		if update.Message != nil {
+			err = handlers.HandleMessage(ctx, update, bot)
+			// Internal errors from this handler should not be retried - log and tell TG we are good.
+			if err != nil {
+				log.Errorf(ctx, "%v", err)
+				return
+			}
+		}
+
+		if update.InlineQuery != nil {
+			err = handlers.HandleInlineQuery(ctx, update, bot)
+		}
+
+		if update.ChosenInlineResult != nil {
+			err = handlers.HandleChosenInlineResult(ctx, update, bot)
+		}
+
+		if err != nil {
+			log.Errorf(ctx, "%v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
 	}
 }

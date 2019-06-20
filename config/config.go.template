@@ -1,7 +1,8 @@
 package config
 
 const (
-	TgToken     = "12345678:AABBCCDDEEFF"
 	KGAPIKey    = "DEADBEEF"
 	InitAdminID = 88888888
 )
+
+var TgTokens = [...]string{"12345678:AABBCCDDEEFF"}

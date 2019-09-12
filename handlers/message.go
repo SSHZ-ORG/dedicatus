@@ -27,6 +27,7 @@ var commandMap = map[string]func(ctx context.Context, args []string, userID int)
 	"/u":     commandUpdatePersonalityNickname,
 	"/a":     commandEditAlias,
 	"/g":     commandRegisterInventory,
+	"/r":     commandReplaceInventoryFileID,
 	"/c":     commandManageContributors,
 	"/kg":    commandQueryKG,
 	"/stats": commandStats,
@@ -290,6 +291,34 @@ func commandRegisterInventory(ctx context.Context, args []string, userID int) (s
 	if err != nil {
 		if err == models.ErrorOnlyAdminCanUpdateInventory {
 			return "This GIF is already known. Only admins or its creator can modify it now.", nil
+		}
+		return "", err
+	}
+
+	s, err := i.ToString(ctx)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Updated Inventory %s", s), nil
+}
+
+func commandReplaceInventoryFileID(ctx context.Context, args []string, userID int) (string, error) {
+	c := models.GetConfig(ctx)
+	if !c.IsAdmin(userID) {
+		return errorMessageNotAdmin, nil
+	}
+
+	if len(args) != 3 {
+		return "Usage:\n/r <OldFileID> <NewFileID>", nil
+	}
+
+	oldFileID := args[1]
+	newFileID := args[2]
+
+	i, err := models.ReplaceFileID(ctx, oldFileID, newFileID)
+	if err != nil {
+		if err == datastore.ErrNoSuchEntity {
+			return "Inventory not found", nil
 		}
 		return "", err
 	}

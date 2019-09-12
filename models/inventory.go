@@ -151,3 +151,24 @@ func IncrementUsageCounter(ctx context.Context, fileID string) error {
 func CountInventories(ctx context.Context, personality *datastore.Key) (int, error) {
 	return datastore.NewQuery(inventoryEntityKind).KeysOnly().Filter("Personality = ", personality).Count(ctx)
 }
+
+func ReplaceFileID(ctx context.Context, oldFileID, newFileID string) (*Inventory, error) {
+	i := new(Inventory)
+
+	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {
+		oldKey := inventoryKey(ctx, oldFileID)
+		if err := nds.Get(ctx, oldKey, i); err != nil {
+			return err
+		}
+
+		i.FileID = newFileID
+
+		if err := nds.Delete(ctx, oldKey); err != nil {
+			return err
+		}
+		_, err := nds.Put(ctx, inventoryKey(ctx, newFileID), i)
+		return err
+	}, &datastore.TransactionOptions{XG: true})
+
+	return i, err
+}

@@ -134,18 +134,20 @@ func GloballyLastUsedInventories(ctx context.Context) ([]*Inventory, error) {
 }
 
 func IncrementUsageCounter(ctx context.Context, fileID string) error {
-	i := new(Inventory)
-	key := inventoryKey(ctx, fileID)
-	err := nds.Get(ctx, key, i)
-	if err != nil {
+	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
+		i := new(Inventory)
+		key := inventoryKey(ctx, fileID)
+		err := nds.Get(ctx, key, i)
+		if err != nil {
+			return err
+		}
+
+		i.UsageCount += 1
+		i.LastUsed = time.Now()
+
+		_, err = nds.Put(ctx, key, i)
 		return err
-	}
-
-	i.UsageCount += 1
-	i.LastUsed = time.Now()
-
-	_, err = nds.Put(ctx, key, i)
-	return err
+	}, &datastore.TransactionOptions{})
 }
 
 func CountInventories(ctx context.Context, personality *datastore.Key) (int, error) {

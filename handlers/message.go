@@ -36,24 +36,35 @@ var commandMap = map[string]func(ctx context.Context, args []string, userID int)
 func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	message := update.Message
 	if message.Document != nil {
-		replyMessage := ""
 
 		fileID := message.Document.FileID
 
+		replyMessages := []string{"Received file " + fileID}
+
 		i, err := models.GetInventory(ctx, fileID)
-		if err == nil {
+		if err != nil {
+			if err != datastore.ErrNoSuchEntity {
+				return err
+			}
+			i, err = models.GetInventoryByFile(ctx, fileID, message.Document.FileSize)
+			if err != nil {
+				return err
+			}
+		}
+
+		if i != nil {
 			s, err := i.ToString(ctx)
 			if err != nil {
 				return err
 			}
 
-			replyMessage = fmt.Sprintf("I know this GIF %s", s)
+			replyMessages = append(replyMessages, s)
 		} else {
-			replyMessage = fmt.Sprintf("New GIF %s", fileID)
+			replyMessages = append(replyMessages, "No matching Inventory found.")
 		}
 
-		if replyMessage != "" {
-			reply := tgbotapi.NewMessage(message.Chat.ID, replyMessage)
+		if len(replyMessages) > 0 {
+			reply := tgbotapi.NewMessage(message.Chat.ID, strings.Join(replyMessages, "\n"))
 			reply.ReplyToMessageID = message.MessageID
 			_, err := bot.Send(reply)
 			return err

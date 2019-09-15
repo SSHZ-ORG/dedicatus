@@ -62,6 +62,35 @@ func GetInventory(ctx context.Context, fileID string) (*Inventory, error) {
 	return i, err
 }
 
+func GetInventoryByFile(ctx context.Context, fileID string, fileSize int) (*Inventory, error) {
+	count, err := datastore.NewQuery(inventoryEntityKind).Filter("FileSize =", fileSize).Count(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if count == 0 {
+		return nil, nil
+	}
+
+	_, b, err := tgapi.FetchFileInfo(ctx, fileID)
+	s := md5.Sum(b)
+
+	keys, err := datastore.NewQuery(inventoryEntityKind).Filter("MD5Sum =", s[:]).KeysOnly().GetAll(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(keys) == 0 {
+		return nil, nil
+	} else if len(keys) > 1 {
+		log.Criticalf(ctx, "Hash conflict (%x)!", s)
+		return nil, nil
+	}
+
+	i := new(Inventory)
+	err = nds.Get(ctx, keys[0], i)
+	return i, err
+}
+
 func CreateInventory(ctx context.Context, fileID string, personality []*datastore.Key, userID int, config Config) (*Inventory, error) {
 	i := new(Inventory)
 	key := inventoryKey(ctx, fileID)

@@ -49,7 +49,7 @@ func (i Inventory) ToString(ctx context.Context) (string, error) {
 		pns = append(pns, p.CanonicalName)
 	}
 
-	return fmt.Sprintf("%s [%s]", i.FileID, strings.Join(pns, ", ")), nil
+	return fmt.Sprintf("%s\n%x (%d bytes)\n[%s]", i.FileID, i.MD5Sum, i.FileSize, strings.Join(pns, ", ")), nil
 }
 
 func inventoryKey(ctx context.Context, fileID string) *datastore.Key {

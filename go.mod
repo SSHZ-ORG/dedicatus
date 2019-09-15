@@ -1,6 +1,7 @@
 module github.com/SSHZ-ORG/dedicatus
 
 require (
+	cloud.google.com/go v0.46.2
 	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible
 	github.com/gojp/kana v0.1.0
 	github.com/gorilla/mux v1.7.3

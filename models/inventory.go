@@ -1,16 +1,23 @@
 package models
 
 import (
+	"crypto/md5"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/SSHZ-ORG/dedicatus/config"
 	"github.com/SSHZ-ORG/dedicatus/utils"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
+	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
 )
 
 const maxItems = 50
@@ -27,6 +34,9 @@ type Inventory struct {
 
 	UsageCount int64
 	LastUsed   time.Time
+
+	MD5Sum   datastore.ByteString
+	FileSize int
 }
 
 func (i Inventory) ToString(ctx context.Context) (string, error) {
@@ -173,4 +183,64 @@ func ReplaceFileID(ctx context.Context, oldFileID, newFileID string) (*Inventory
 	}, &datastore.TransactionOptions{XG: true})
 
 	return i, err
+}
+
+func UpdateFileMetadata(ctx context.Context, oldFileID string) error {
+	bot := utils.NewTgBotNoCheck(ctx)
+	file, err := bot.GetFile(tgbotapi.FileConfig{FileID: oldFileID})
+	if err != nil {
+		return err
+	}
+
+	newFileID := file.FileID
+	if (newFileID != oldFileID) {
+		log.Infof(ctx, "Detected FileID change %s -> %s", oldFileID, newFileID)
+	}
+
+	res, err := http.Get(file.Link(config.TgToken))
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return errors.New("HTTP Status: " + res.Status)
+	}
+
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	if !appengine.IsDevAppServer() {
+		if err := utils.StoreFileToGCS(ctx, newFileID, b); err != nil {
+			return err
+		}
+	}
+
+	sum := md5.Sum(b)
+	log.Infof(ctx, "File %s: %x (%d bytes)", newFileID, sum, file.FileSize)
+
+	return nds.RunInTransaction(ctx, func(tc context.Context) error {
+		i := new(Inventory)
+		oldKey := inventoryKey(ctx, oldFileID)
+		if err := nds.Get(ctx, oldKey, i); err != nil {
+			if err == datastore.ErrNoSuchEntity {
+				// Silently ignore this.
+				return nil
+			}
+			return err
+		}
+
+		i.FileID = newFileID
+		i.MD5Sum = sum[:]
+		i.FileSize = file.FileSize
+
+		if oldFileID != newFileID {
+			if err := nds.Delete(ctx, oldKey); err != nil {
+				return err
+			}
+		}
+		_, err := nds.Put(ctx, inventoryKey(ctx, newFileID), i)
+		return err
+	}, &datastore.TransactionOptions{})
 }

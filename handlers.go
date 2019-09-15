@@ -19,6 +19,7 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc(utils.TgWebhookPath(config.TgToken), webhook)
 	r.HandleFunc("/admin/register", register)
+	r.HandleFunc("/admin/updateFileMetadata", updateFileMetadata)
 
 	http.Handle("/", r)
 	appengine.Main()
@@ -30,25 +31,41 @@ func register(w http.ResponseWriter, r *http.Request) {
 	err := models.CreateConfig(ctx)
 	if err != nil {
 		log.Errorf(ctx, "%v", err)
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	bot, err := utils.NewTgBot(ctx)
 	if err != nil {
 		log.Errorf(ctx, "%v", err)
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	response, err := utils.RegisterWebhook(ctx, bot)
 	if err != nil {
 		log.Errorf(ctx, "%v", err)
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Write(response.Result)
+	_, _ = w.Write(response.Result)
+}
+
+func updateFileMetadata(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+
+	id := r.FormValue("id")
+	if id == "" {
+		http.Error(w, "Missing arg id", http.StatusBadRequest)
+		return
+	}
+
+	err := models.UpdateFileMetadata(ctx, id)
+	if err != nil {
+		log.Errorf(ctx, "models.UpdateFileMetadata: %+v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func webhook(w http.ResponseWriter, r *http.Request) {

@@ -11,4 +11,5 @@ handlers:
     secure: always
 
 automatic_scaling:
+  max_concurrent_requests: 80
   min_instances: 1

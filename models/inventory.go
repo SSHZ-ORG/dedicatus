@@ -93,27 +93,32 @@ func GetInventoryByFile(ctx context.Context, fileID string, fileSize int) (*Inve
 
 func CreateInventory(ctx context.Context, fileID string, personality []*datastore.Key, userID int, config Config) (*Inventory, error) {
 	i := new(Inventory)
-	key := inventoryKey(ctx, fileID)
-	err := nds.Get(ctx, key, i)
 
-	// This is an existing Inventory, only admins or original creator can update it.
-	if err == nil && !(config.IsAdmin(userID) || i.Creator == userID) {
-		return nil, ErrorOnlyAdminCanUpdateInventory
-	}
-	if err != nil && err != datastore.ErrNoSuchEntity {
-		return nil, err
-	}
+	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {
+		key := inventoryKey(ctx, fileID)
+		err := nds.Get(ctx, key, i)
 
-	i.FileID = fileID
-	i.FileType = utils.FileTypeMPEG4GIF
-	i.Personality = personality
-	i.LastUsed = time.Now()
+		// This is an existing Inventory, only admins or original creator can update it.
+		if err == nil && !(config.IsAdmin(userID) || i.Creator == userID) {
+			return ErrorOnlyAdminCanUpdateInventory
+		}
+		if err != nil && err != datastore.ErrNoSuchEntity {
+			return err
+		}
 
-	if i.Creator == 0 {
-		i.Creator = userID
-	}
+		i.FileID = fileID
+		i.FileType = utils.FileTypeMPEG4GIF
+		i.Personality = personality
+		i.LastUsed = time.Now()
 
-	_, err = nds.Put(ctx, key, i)
+		if i.Creator == 0 {
+			i.Creator = userID
+		}
+
+		_, err = nds.Put(ctx, key, i)
+		return err
+	}, &datastore.TransactionOptions{})
+
 	return i, err
 }
 

@@ -3,19 +3,20 @@ package utils
 import (
 	"fmt"
 
+	"github.com/SSHZ-ORG/dedicatus/config"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
 )
 
-func NewTgBot(ctx context.Context, token string) (*tgbotapi.BotAPI, error) {
-	return tgbotapi.NewBotAPIWithClient(token, urlfetch.Client(ctx))
+func NewTgBot(ctx context.Context) (*tgbotapi.BotAPI, error) {
+	return tgbotapi.NewBotAPIWithClient(config.TgToken, urlfetch.Client(ctx))
 }
 
-func NewTgBotNoCheck(ctx context.Context, token string) *tgbotapi.BotAPI {
+func NewTgBotNoCheck(ctx context.Context) *tgbotapi.BotAPI {
 	return &tgbotapi.BotAPI{
-		Token:  token,
+		Token:  config.TgToken,
 		Client: urlfetch.Client(ctx),
 		Buffer: 100,
 	}

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SSHZ-ORG/dedicatus/scheduler"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/qedus/nds"
@@ -115,8 +116,19 @@ func CreateInventory(ctx context.Context, fileID string, personality []*datastor
 			i.Creator = userID
 		}
 
-		_, err = nds.Put(ctx, key, i)
-		return err
+		shouldScheduleMetadataUpdate := err == datastore.ErrNoSuchEntity
+
+		if _, err := nds.Put(ctx, key, i); err != nil {
+			return err
+		}
+
+		if shouldScheduleMetadataUpdate {
+			// New File. Schedule metadata update.
+			if err := scheduler.ScheduleUpdateFileMetadata(ctx, []string{fileID}); err != nil {
+				return err
+			}
+		}
+		return nil
 	}, &datastore.TransactionOptions{})
 
 	return i, err
@@ -223,11 +235,17 @@ func ReplaceFileID(ctx context.Context, oldFileID, newFileID string) (*Inventory
 
 		i.FileID = newFileID
 
+		i.MD5Sum = nil
+		i.FileSize = 0
+
 		if err := nds.Delete(ctx, oldKey); err != nil {
 			return err
 		}
-		_, err := nds.Put(ctx, inventoryKey(ctx, newFileID), i)
-		return err
+		if _, err := nds.Put(ctx, inventoryKey(ctx, newFileID), i); err != nil {
+			return err
+		}
+
+		return scheduler.ScheduleUpdateFileMetadata(ctx, []string{newFileID})
 	}, &datastore.TransactionOptions{XG: true})
 
 	return i, err

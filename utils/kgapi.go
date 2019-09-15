@@ -65,7 +65,7 @@ func getKGMemcache(ctx context.Context, query string) *string {
 }
 
 func setKGMemcache(ctx context.Context, query, result string) {
-	memcache.Set(ctx, &memcache.Item{
+	_ = memcache.Set(ctx, &memcache.Item{
 		Key:        getKGMemcacheKey(query),
 		Value:      []byte(result),
 		Expiration: 4 * time.Hour,

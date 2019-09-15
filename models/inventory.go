@@ -4,15 +4,12 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/SSHZ-ORG/dedicatus/config"
+	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
@@ -189,8 +186,7 @@ func ReplaceFileID(ctx context.Context, oldFileID, newFileID string) (*Inventory
 }
 
 func UpdateFileMetadata(ctx context.Context, oldFileID string) error {
-	bot := utils.NewTgBotNoCheck(ctx)
-	file, err := bot.GetFile(tgbotapi.FileConfig{FileID: oldFileID})
+	file, b, err := tgapi.FetchFileInfo(ctx, oldFileID)
 	if err != nil {
 		return err
 	}
@@ -198,20 +194,6 @@ func UpdateFileMetadata(ctx context.Context, oldFileID string) error {
 	newFileID := file.FileID
 	if (newFileID != oldFileID) {
 		log.Infof(ctx, "Detected FileID change %s -> %s", oldFileID, newFileID)
-	}
-
-	res, err := http.Get(file.Link(config.TgToken))
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return errors.New("HTTP Status: " + res.Status)
-	}
-
-	b, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return err
 	}
 
 	if !appengine.IsDevAppServer() {

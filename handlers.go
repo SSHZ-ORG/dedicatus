@@ -8,7 +8,8 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/config"
 	"github.com/SSHZ-ORG/dedicatus/handlers"
 	"github.com/SSHZ-ORG/dedicatus/models"
-	"github.com/SSHZ-ORG/dedicatus/utils"
+	"github.com/SSHZ-ORG/dedicatus/paths"
+	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/gorilla/mux"
 	"google.golang.org/appengine"
@@ -17,9 +18,9 @@ import (
 
 func main() {
 	r := mux.NewRouter()
-	r.HandleFunc(utils.TgWebhookPath(config.TgToken), webhook)
+	r.HandleFunc(tgapi.TgWebhookPath(config.TgToken), webhook)
 	r.HandleFunc("/admin/register", register)
-	r.HandleFunc("/admin/updateFileMetadata", updateFileMetadata)
+	r.HandleFunc(paths.UpdateFileMetadata, updateFileMetadata)
 
 	http.Handle("/", r)
 	appengine.Main()
@@ -35,14 +36,14 @@ func register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bot, err := utils.NewTgBot(ctx)
+	bot, err := tgapi.NewTgBot(ctx)
 	if err != nil {
 		log.Errorf(ctx, "%v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	response, err := utils.RegisterWebhook(ctx, bot)
+	response, err := tgapi.RegisterWebhook(ctx, bot)
 	if err != nil {
 		log.Errorf(ctx, "%v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -82,7 +83,7 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof(ctx, "%v", string(bytes))
 
-	bot := utils.NewTgBotNoCheck(ctx)
+	bot := tgapi.NewTgBotNoCheck(ctx)
 
 	if update.Message != nil {
 		err = handlers.HandleMessage(ctx, update, bot)

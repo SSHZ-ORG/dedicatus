@@ -169,6 +169,20 @@ func GloballyLastUsedInventories(ctx context.Context) ([]*Inventory, error) {
 	return inventories, err
 }
 
+func AllInventoriesFileIDs(ctx context.Context) ([]string, error) {
+	keys, err := datastore.NewQuery(inventoryEntityKind).KeysOnly().GetAll(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var fileIDs []string
+	for _, k := range keys {
+		fileIDs = append(fileIDs, k.StringID())
+	}
+
+	return fileIDs, nil
+}
+
 func IncrementUsageCounter(ctx context.Context, fileID string) error {
 	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
 		i := new(Inventory)

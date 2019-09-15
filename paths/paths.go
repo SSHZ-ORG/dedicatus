@@ -1,5 +1,6 @@
 package paths
 
 const (
-	UpdateFileMetadata = "/admin/updateFileMetadata"
+	UpdateFileMetadata      = "/admin/updateFileMetadata"
+	QueueUpdateFileMetadata = "/admin/queueUpdateFileMetadata"
 )

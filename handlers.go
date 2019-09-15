@@ -9,6 +9,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/handlers"
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/paths"
+	"github.com/SSHZ-ORG/dedicatus/scheduler"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/gorilla/mux"
@@ -21,6 +22,7 @@ func main() {
 	r.HandleFunc(tgapi.TgWebhookPath(config.TgToken), webhook)
 	r.HandleFunc("/admin/register", register)
 	r.HandleFunc(paths.UpdateFileMetadata, updateFileMetadata)
+	r.HandleFunc(paths.QueueUpdateFileMetadata, queueUpdateFileMetadata)
 
 	http.Handle("/", r)
 	appengine.Main()
@@ -65,6 +67,22 @@ func updateFileMetadata(w http.ResponseWriter, r *http.Request) {
 	err := models.UpdateFileMetadata(ctx, id)
 	if err != nil {
 		log.Errorf(ctx, "models.UpdateFileMetadata: %+v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func queueUpdateFileMetadata(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+
+	ids, err := models.AllInventoriesFileIDs(ctx)
+	if err != nil {
+		log.Errorf(ctx, "models.AllInventoriesFileIDs: %+v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	err = scheduler.ScheduleUpdateFileMetadata(ctx, ids)
+	if err != nil {
+		log.Errorf(ctx, "scheduler.ScheduleUpdateFileMetadata: %+v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

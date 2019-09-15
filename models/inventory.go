@@ -147,15 +147,18 @@ func IncrementUsageCounter(ctx context.Context, fileID string) error {
 	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
 		i := new(Inventory)
 		key := inventoryKey(ctx, fileID)
-		err := nds.Get(ctx, key, i)
-		if err != nil {
+		if err := nds.Get(ctx, key, i); err != nil {
+			if err == datastore.ErrNoSuchEntity {
+				// Silently ignore this.
+				return nil
+			}
 			return err
 		}
 
 		i.UsageCount += 1
 		i.LastUsed = time.Now()
 
-		_, err = nds.Put(ctx, key, i)
+		_, err := nds.Put(ctx, key, i)
 		return err
 	}, &datastore.TransactionOptions{})
 }

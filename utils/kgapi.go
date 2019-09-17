@@ -2,34 +2,28 @@ package utils
 
 import (
 	"encoding/json"
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/SSHZ-ORG/dedicatus/config"
 	"golang.org/x/net/context"
-	"google.golang.org/api/googleapi/transport"
 	"google.golang.org/api/kgsearch/v1"
+	"google.golang.org/api/option"
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/memcache"
-	"google.golang.org/appengine/urlfetch"
 )
 
 const kgMemcacheKey = "KG1:"
 
 // this returns the `result` node of the found entity.
 func sendKGEntityQuery(ctx context.Context, query string) (map[string]interface{}, error) {
-	s, err := kgsearch.New(&http.Client{
-		Transport: &transport.APIKey{
-			Key:       config.KGAPIKey,
-			Transport: urlfetch.Client(ctx).Transport,
-		},
-	})
+	s, err := kgsearch.NewService(ctx, option.WithAPIKey(config.KGAPIKey))
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := kgsearch.NewEntitiesService(s).Search().Limit(1).Languages("ja", "zh").Query(query).Types("Person").Do()
+	req := kgsearch.NewEntitiesService(s).Search().Query(query).Languages("ja", "zh").Types("Person").Limit(1)
+	resp, err := req.Do()
 	if err != nil {
 		return nil, err
 	}

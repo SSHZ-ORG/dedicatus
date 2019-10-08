@@ -271,7 +271,7 @@ func UpdateFileMetadata(ctx context.Context, oldFileID string) error {
 	sum := md5.Sum(b)
 	log.Infof(ctx, "File %s: %x (%d bytes)", newFileID, sum, file.FileSize)
 
-	return nds.RunInTransaction(ctx, func(tc context.Context) error {
+	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
 		i := new(Inventory)
 		oldKey := inventoryKey(ctx, oldFileID)
 		if err := nds.Get(ctx, oldKey, i); err != nil {

@@ -32,7 +32,7 @@ func CreatePersonality(ctx context.Context, KGID string, name string) (*datastor
 
 	var key *datastore.Key
 
-	err := nds.RunInTransaction(ctx, func(tc context.Context) error {
+	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {
 		k, err := nds.Put(ctx, datastore.NewIncompleteKey(ctx, personalityEntityKind, nil), p)
 		if err != nil {
 			return err

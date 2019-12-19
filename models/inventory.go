@@ -144,7 +144,7 @@ func FindInventories(ctx context.Context, personalities []*datastore.Key, lastCu
 	q = q.Order("-UsageCount").Limit(maxItems)
 
 	offset, err := strconv.Atoi(lastCursor)
-	if err != nil {
+	if err == nil {
 		q = q.Offset(offset)
 	}
 

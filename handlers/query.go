@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/SSHZ-ORG/dedicatus/models"
+	"github.com/SSHZ-ORG/dedicatus/models/sortmode"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"golang.org/x/net/context"
@@ -40,45 +42,50 @@ func prepareResponse(ctx context.Context, query *tgbotapi.InlineQuery) (*tgbotap
 		}
 	}
 
-	if len(qs) == 0 {
-		inventories, err := models.GloballyLastUsedInventories(ctx)
-		if err != nil {
-			return nil, err
+	// Determine QueryMode
+	queryMode := sortmode.UsageCountDesc
+	if len(qs) == 0 { // Globally last used
+		queryMode = sortmode.LastUsedDesc
+	}
+	for i, q := range qs {
+		if m := sortmode.ParseQuerySortMode(q); m != sortmode.Undefined {
+			// This token is valid sort mode flag.
+			queryMode = m                    // Use it
+			qs = append(qs[:i], qs[i+1:]...) // Delete this token so we don't use it to search personality
+			break                            // If there are more tokens after us, leave them there. It will be used to search personality and fail
 		}
-		return &tgbotapi.InlineConfig{
-			InlineQueryID: query.ID,
-			Results:       constructInlineResults(inventories),
-		}, nil
 	}
 
-	pKeysChan := make(chan []*datastore.Key, len(qs))
-	errsChan := make(chan error, len(qs))
+	pKeys := make([][]*datastore.Key, len(qs))
+	errs := make([]error, len(qs))
+	wg := sync.WaitGroup{}
+	wg.Add(len(qs))
 
-	for _, q := range qs {
-		go func(q string) {
-			pKeys, err := models.TryFindPersonalitiesWithKG(ctx, q)
-			pKeysChan <- pKeys
-			errsChan <- err
-		}(q)
+	for i := range qs {
+		go func(i int) {
+			pKeys[i], errs[i] = models.TryFindPersonalitiesWithKG(ctx, qs[i])
+			defer wg.Done()
+		}(i)
 	}
+
+	wg.Wait()
 
 	var flattenKeys []*datastore.Key
-	for i := 0; i < len(qs); i++ {
-		err := <-errsChan
-		if err != nil {
-			return nil, err
+	for i := range qs {
+		if errs[i] != nil {
+			return nil, errs[i]
 		}
 
-		pKeys := <-pKeysChan
-		if len(pKeys) == 0 {
+		if len(pKeys[i]) == 0 {
+			// One token is neither sort mode flag nor personality. Return empty result.
 			return &tgbotapi.InlineConfig{
 				InlineQueryID: query.ID,
 			}, nil
 		}
-		flattenKeys = append(flattenKeys, pKeys...)
+		flattenKeys = append(flattenKeys, pKeys[i]...)
 	}
 
-	inventories, nextCursor, err := models.FindInventories(ctx, flattenKeys, query.Offset)
+	inventories, nextCursor, err := models.FindInventories(ctx, flattenKeys, queryMode, query.Offset)
 	if err != nil {
 		return nil, err
 	}

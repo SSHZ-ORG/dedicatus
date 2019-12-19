@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SSHZ-ORG/dedicatus/models/sortmode"
 	"github.com/SSHZ-ORG/dedicatus/scheduler"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
@@ -134,19 +135,32 @@ func CreateInventory(ctx context.Context, fileID string, personality []*datastor
 	return i, err
 }
 
-func FindInventories(ctx context.Context, personalities []*datastore.Key, lastCursor string) ([]*Inventory, string, error) {
+func FindInventories(ctx context.Context, personalities []*datastore.Key, sortMode sortmode.SortMode, lastCursor string) ([]*Inventory, string, error) {
 	q := datastore.NewQuery(inventoryEntityKind).KeysOnly()
 
 	for _, personality := range personalities {
 		q = q.Filter("Personality = ", personality)
 	}
 
-	q = q.Order("-UsageCount").Limit(maxItems)
+	switch sortMode {
+	case sortmode.UsageCountDesc:
+		q = q.Order("-UsageCount")
+	case sortmode.UsageCountAsc:
+		q = q.Order("UsageCount")
+	case sortmode.LastUsedDesc:
+		q = q.Order("-LastUsed")
+	case sortmode.LastUsedAsc:
+		q = q.Order("LastUsed")
+	case sortmode.RandomDraw:
+		// Not implemented. Let it use whatever natural ordering for now.
+	}
 
 	offset, err := strconv.Atoi(lastCursor)
 	if err == nil {
 		q = q.Offset(offset)
 	}
+
+	q = q.Limit(maxItems)
 
 	keys, err := q.GetAll(ctx, nil)
 	if err != nil {
@@ -169,21 +183,6 @@ func FindInventories(ctx context.Context, personalities []*datastore.Key, lastCu
 	}
 
 	return inventories, newCursor, nil
-}
-
-func GloballyLastUsedInventories(ctx context.Context) ([]*Inventory, error) {
-	keys, err := datastore.NewQuery(inventoryEntityKind).KeysOnly().Order("-LastUsed").Limit(maxItems).GetAll(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(keys) == 0 {
-		return nil, nil
-	}
-
-	inventories := make([]*Inventory, len(keys))
-	err = nds.GetMulti(ctx, keys, inventories)
-	return inventories, err
 }
 
 func AllInventoriesFileIDs(ctx context.Context) ([]string, error) {
@@ -258,7 +257,7 @@ func UpdateFileMetadata(ctx context.Context, oldFileID string) error {
 	}
 
 	newFileID := file.FileID
-	if (newFileID != oldFileID) {
+	if newFileID != oldFileID {
 		log.Infof(ctx, "Detected FileID change %s -> %s", oldFileID, newFileID)
 	}
 

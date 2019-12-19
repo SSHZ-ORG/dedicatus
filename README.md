@@ -67,16 +67,6 @@ A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine
 * Golang on GAE provides very high throughput even with only one instance. Each request runs in a goroutine and we can use all the blocking calls to external APIs.
 * I cannot properly write non-trivial Python applications.
 
-#### Why never use transactions, even in obvious read-modify-write cases?
-
-* We only have these scenarios that require writing to datastore:
-    * Update bot config;
-    * Update Personality;
-    * Insert / update Inventory; 
-    * Update usage count.
-* For all of them, we don't really care about consistency.
-* There is one case where we use transaction though. When creating a new personality and the first alias (CanonicalName), we put the 2 creation into a transaction so we don't result in a broken state.
-
 #### Why store user roles in one Config entity, instead of using a User Role table?
 
 * So we can store this small entity in memcache, which takes 1ms to come back.

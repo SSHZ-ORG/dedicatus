@@ -63,8 +63,8 @@ func prepareResponse(ctx context.Context, query *tgbotapi.InlineQuery) (*tgbotap
 
 	for i := range qs {
 		go func(i int) {
-			pKeys[i], errs[i] = models.TryFindPersonalitiesWithKG(ctx, qs[i])
 			defer wg.Done()
+			pKeys[i], errs[i] = models.TryFindPersonalitiesWithKG(ctx, qs[i])
 		}(i)
 	}
 

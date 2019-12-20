@@ -411,12 +411,12 @@ func commandStats(ctx context.Context, args []string, userID int) (string, error
 
 	for i := range keys {
 		go func(i int) {
+			defer wg.Done()
 			count, err := models.CountInventories(ctx, keys[i])
 			if err == nil {
 				rs[i] = fmt.Sprintf("kg:%s %s: %d", ps[i].KGID, ps[i].CanonicalName, count)
 			}
 			errs[i] = err
-			wg.Done()
 		}(i)
 	}
 

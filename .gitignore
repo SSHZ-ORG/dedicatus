@@ -14,4 +14,4 @@
 .DS_Store
 /.idea/
 
-config.go
+/config/config.go

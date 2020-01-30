@@ -2,6 +2,7 @@ package models
 
 import (
 	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
@@ -65,6 +66,24 @@ func GetInventory(ctx context.Context, fileID string) (*Inventory, error) {
 	return i, err
 }
 
+func GetInventoryByMD5(ctx context.Context, sum []byte) (*datastore.Key, *Inventory, error) {
+	keys, err := datastore.NewQuery(inventoryEntityKind).Filter("MD5Sum =", sum[:]).KeysOnly().GetAll(ctx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(keys) == 0 {
+		return nil, nil, datastore.ErrNoSuchEntity
+	} else if len(keys) > 1 {
+		log.Criticalf(ctx, "Hash conflict (%x)!", sum)
+		return nil, nil, nil
+	}
+
+	i := new(Inventory)
+	err = nds.Get(ctx, keys[0], i)
+	return keys[0], i, err
+}
+
 func GetInventoryByFile(ctx context.Context, fileID string, fileSize int) (*Inventory, error) {
 	count, err := datastore.NewQuery(inventoryEntityKind).Filter("FileSize =", fileSize).Count(ctx)
 	if err != nil {
@@ -75,22 +94,12 @@ func GetInventoryByFile(ctx context.Context, fileID string, fileSize int) (*Inve
 	}
 
 	_, b, err := tgapi.FetchFileInfo(ctx, fileID)
+
 	s := md5.Sum(b)
-
-	keys, err := datastore.NewQuery(inventoryEntityKind).Filter("MD5Sum =", s[:]).KeysOnly().GetAll(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(keys) == 0 {
-		return nil, nil
-	} else if len(keys) > 1 {
-		log.Criticalf(ctx, "Hash conflict (%x)!", s)
+	_, i, err := GetInventoryByMD5(ctx, s[:])
+	if err == datastore.ErrNoSuchEntity {
 		return nil, nil
 	}
-
-	i := new(Inventory)
-	err = nds.Get(ctx, keys[0], i)
 	return i, err
 }
 
@@ -200,22 +209,38 @@ func AllInventoriesFileIDs(ctx context.Context) ([]string, error) {
 	return fileIDs, nil
 }
 
-func IncrementUsageCounter(ctx context.Context, fileID string) error {
+func IncrementUsageCounter(ctx context.Context, resultID string) error {
+	// TODO: ResultID will become DB Key
+	// We are using MD5Sum for now. We cannot do a DB query inside a transaction without ancestor.
+	// So this means we do 2 non-cached DB reads (query in GetInventoryByMD5 + strong read inside transaction).
+	// The Get inside GetInventoryByMD5 should be cached.
+
+	b, err := hex.DecodeString(resultID)
+	if err != nil {
+		log.Criticalf(ctx, "Received unrecognized ResultID: %s", resultID)
+		return nil
+	}
+
+	key, _, err := GetInventoryByMD5(ctx, b)
+	if err != nil {
+		if err == datastore.ErrNoSuchEntity {
+			// Silently ignore this.
+			return nil
+		}
+		return err
+	}
+
 	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
 		i := new(Inventory)
-		key := inventoryKey(ctx, fileID)
+		// Get again to avoid race condition.
 		if err := nds.Get(ctx, key, i); err != nil {
-			if err == datastore.ErrNoSuchEntity {
-				// Silently ignore this.
-				return nil
-			}
 			return err
 		}
 
 		i.UsageCount += 1
 		i.LastUsed = time.Now()
 
-		_, err := nds.Put(ctx, key, i)
+		_, err = nds.Put(ctx, key, i)
 		return err
 	}, &datastore.TransactionOptions{})
 }

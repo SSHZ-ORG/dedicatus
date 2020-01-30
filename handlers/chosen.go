@@ -7,6 +7,6 @@ import (
 )
 
 func HandleChosenInlineResult(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
-	fileID := update.ChosenInlineResult.ResultID
-	return models.IncrementUsageCounter(ctx, fileID)
+	resultID := update.ChosenInlineResult.ResultID
+	return models.IncrementUsageCounter(ctx, resultID)
 }

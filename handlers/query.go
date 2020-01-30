@@ -17,6 +17,10 @@ import (
 func constructInlineResults(inventories []*models.Inventory) []interface{} {
 	var results []interface{}
 	for _, i := range inventories {
+		if len(i.MD5Sum) == 0 {
+			// Temporarily skip this result. File Metadata is not there yet so we don't have MD5Sum.
+			continue
+		}
 		uniqueID := fmt.Sprintf("%x", i.MD5Sum) // TODO: Use TG UniqueID
 		results = append(results, utils.MakeInlineQueryResult(uniqueID, i.FileID, i.FileType))
 	}

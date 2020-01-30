@@ -10,18 +10,18 @@ type InlineQueryResultCachedMPEG4GIF struct {
 	FileID string `json:"mpeg4_file_id"`
 }
 
-func MakeInlineQueryResultCachedMPEG4GIF(fileID string) InlineQueryResultCachedMPEG4GIF {
+func makeInlineQueryResultCachedMPEG4GIF(uniqueID, fileID string) InlineQueryResultCachedMPEG4GIF {
 	return InlineQueryResultCachedMPEG4GIF{
 		Type:   "mpeg4_gif",
-		ID:     fileID,
+		ID:     uniqueID,
 		FileID: fileID,
 	}
 }
 
-func MakeInlineQueryResult(fileID, fileType string) interface{} {
+func MakeInlineQueryResult(uniqueID, fileID, fileType string) interface{} {
 	switch fileType {
 	case FileTypeMPEG4GIF:
-		return MakeInlineQueryResultCachedMPEG4GIF(fileID)
+		return makeInlineQueryResultCachedMPEG4GIF(uniqueID, fileID)
 	}
 	return nil
 }

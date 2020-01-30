@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 
@@ -16,7 +17,8 @@ import (
 func constructInlineResults(inventories []*models.Inventory) []interface{} {
 	var results []interface{}
 	for _, i := range inventories {
-		results = append(results, utils.MakeInlineQueryResult(i.FileID, i.FileType))
+		uniqueID := fmt.Sprintf("%x", i.MD5Sum) // TODO: Use TG UniqueID
+		results = append(results, utils.MakeInlineQueryResult(uniqueID, i.FileID, i.FileType))
 	}
 	return results
 }

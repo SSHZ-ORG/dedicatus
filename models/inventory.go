@@ -25,6 +25,7 @@ var (
 	ErrorOnlyAdminCanUpdateInventory = errors.New("Only admins can update an existing GIF.")
 )
 
+// TODO: Use FileUniqueID as DB Key, and use that as ID of InlineQueryResult
 type Inventory struct {
 	FileID      string
 	FileType    string

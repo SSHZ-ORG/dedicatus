@@ -2,8 +2,9 @@
 -- Usage: "g" to set start frame, "G" to set end frame, "Ctrl+g" to create MPEG4_GIF, "Ctrl+G" to create GIF.
 local msg = require 'mp.msg'
 
-gif_filters = "fps=24,scale=540:-1:flags=lanczos"
-mpeg4_gif_filters = "scale='min(1280,iw)':min'(720,ih)':force_original_aspect_ratio=decrease"
+gif_filters = "fps=24"
+mpeg4_gif_filters = ""
+standard_filters = "setsar=1:1"
 
 start_time = -1
 end_time = -1
@@ -20,6 +21,36 @@ end
 
 function make_gif()
     make_gif_internal(false)
+end
+
+function construct_filter(in_filter, max_aspect)
+    filters = {}
+
+    if mp.get_property("deinterlace") == "yes" then
+        -- If we are using deinterlace, let ffmpeg do it too.
+        table.insert(filters, "yadif")
+    end
+
+    -- These aspects are after filter / manual aspect ratio change, but before output scaling (for window).
+    width = mp.get_property_number("dwidth")
+    height = mp.get_property_number("dheight")
+
+    if (width > max_aspect) and (height > max_aspect) then
+        -- OK we have to scale it.
+        if width < height then
+            table.insert(filters, string.format("scale=%s:%s", max_aspect, height * max_aspect / width))
+        else
+            table.insert(filters, string.format("scale=%s:%s", width * max_aspect / height, max_aspect))
+        end
+    end
+
+    table.insert(filters, standard_filters)
+
+    if in_filter ~= "" then
+        table.insert(filters, in_filter)
+    end
+
+    return table.concat(filters, ",")
 end
 
 function make_gif_internal(use_mpeg4)
@@ -45,20 +76,24 @@ function make_gif_internal(use_mpeg4)
         -- MPEG4_GIF
         output_file_path = output_file_path .. ".mp4"
 
-        local args = string.format("ffmpeg -v warning -ss %s -i '%s' -t %s -c:v libx264 -pix_fmt yuv420p -an -filter:v \"%s\" -y '%s'", position, esc(input_file_path), duration, mpeg4_gif_filters, esc(output_file_path))
+        filters = construct_filter(mpeg4_gif_filters, 720)
+
+        local args = string.format("ffmpeg -v warning -ss %s -i '%s' -t %s -c:v libx264 -pix_fmt yuv420p -an -filter:v \"%s\" -y '%s'", position, esc(input_file_path), duration, filters, esc(output_file_path))
         msg.info(args)
         os.execute(args)
     else
         -- Real GIF
         output_file_path = output_file_path .. ".gif"
 
+        filters = construct_filter(gif_filters, 540)
+
         -- first, create the palette
-        local args = string.format("ffmpeg -v warning -ss %s -t %s -i '%s' -vf '%s,palettegen' -y '%s'", position, duration, esc(input_file_path), esc(gif_filters), esc(temp_palette_path))
+        local args = string.format("ffmpeg -v warning -ss %s -t %s -i '%s' -vf '%s,palettegen' -y '%s'", position, duration, esc(input_file_path), filters, esc(temp_palette_path))
         msg.info(args)
         os.execute(args)
 
         -- then, create GIF
-        args = string.format("ffmpeg -v warning -ss %s -t %s -i '%s' -i '%s' -lavfi '%s [x]; [x][1:v] paletteuse' -y '%s'", position, duration, esc(input_file_path), esc(temp_palette_path), esc(gif_filters), esc(output_file_path))
+        args = string.format("ffmpeg -v warning -ss %s -t %s -i '%s' -i '%s' -lavfi '%s [x]; [x][1:v] paletteuse' -y '%s'", position, duration, esc(input_file_path), esc(temp_palette_path), filters, esc(output_file_path))
         msg.info(args)
         os.execute(args)
     end

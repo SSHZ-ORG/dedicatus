@@ -30,11 +30,18 @@ local function construct_filter(in_filter, max_aspect)
     if (width > max_aspect) and (height > max_aspect) then
         -- OK we have to scale it.
         if width < height then
-            table.insert(filters, string.format("scale=%s:%s", max_aspect, height * max_aspect / width))
+            width, height = max_aspect, height * max_aspect / width
         else
-            table.insert(filters, string.format("scale=%s:%s", width * max_aspect / height, max_aspect))
+            width, height = width * max_aspect / height, max_aspect
         end
     end
+    if width % 2 == 1 then
+        width = width + 1
+    end
+    if height % 2 == 1 then
+        height = height + 1
+    end
+    table.insert(filters, string.format("scale=%s:%s", width, height))
 
     table.insert(filters, standard_filters)
 

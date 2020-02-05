@@ -1,6 +1,7 @@
 -- Create animated GIFs with mpv and ffmpeg
 -- Usage: "g" to set start frame, "G" to set end frame, "Ctrl+g" to create MPEG4_GIF, "Ctrl+G" to create GIF.
 local msg = require 'mp.msg'
+local utils = require 'mp.utils'
 
 gif_filters = "fps=24"
 mpeg4_gif_filters = ""
@@ -66,11 +67,11 @@ function make_gif_internal(use_mpeg4)
 
     mp.osd_message("Creating GIF.")
 
-    local input_file_path = mp.get_property("working-directory") .. "/" .. mp.get_property("path")
-    local containing_path = get_containing_path(input_file_path)
+    local input_file_path = utils.join_path(mp.get_property("working-directory"), mp.get_property("path"))
+    local containing_path = utils.split_path(input_file_path)
     local input_file_name_no_ext = mp.get_property("filename/no-ext")
 
-    local output_file_path = containing_path .. string.format('%s_%s_%s', input_file_name_no_ext, start_time_l, end_time_l)
+    local output_file_path = utils.join_path(containing_path, string.format('%s_%s_%s', input_file_name_no_ext, start_time_l, end_time_l))
 
     if use_mpeg4 then
         -- MPEG4_GIF
@@ -110,11 +111,6 @@ end
 function set_gif_end()
     end_time = mp.get_property_number("time-pos", -1)
     mp.osd_message("GIF End: " .. end_time)
-end
-
-function get_containing_path(str, sep)
-    sep = sep or package.config:sub(1, 1)
-    return str:match("(.*" .. sep .. ")")
 end
 
 mp.add_key_binding("g", "set_gif_start", set_gif_start)

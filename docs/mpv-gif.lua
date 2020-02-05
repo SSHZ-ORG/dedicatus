@@ -45,6 +45,22 @@ local function construct_filter(in_filter, max_aspect)
     return table.concat(filters, ",")
 end
 
+local function detect_output_file_path(containing_path, filename, ext)
+    local filename_with_ext = filename .. "." .. ext
+    local preferred_file_path = utils.join_path(containing_path, filename_with_ext)
+
+    local file, err = io.open(preferred_file_path, "w")
+    if file then
+        io.close(file)
+        return preferred_file_path
+    end
+
+    local error_msg = string.format("Failed to write to preferred output (%s), writing to $HOME.", err)
+    mp.osd_message(error_msg)
+    msg.info(error_msg)
+    return utils.join_path(os.getenv("HOME"), filename_with_ext)
+end
+
 local function make_gif_internal(use_mpeg4)
     local start_time_l = start_time
     local end_time_l = end_time
@@ -62,11 +78,12 @@ local function make_gif_internal(use_mpeg4)
     local containing_path = utils.split_path(input_file_path)
     local input_file_name_no_ext = mp.get_property("filename/no-ext")
 
-    local output_file_path = utils.join_path(containing_path, string.format('%s_%s_%s', input_file_name_no_ext, start_time_l, end_time_l))
+    local output_filename = string.format('%s_%s_%s', input_file_name_no_ext, start_time_l, end_time_l)
+    local output_file_path
 
     if use_mpeg4 then
         -- MPEG4_GIF
-        output_file_path = output_file_path .. ".mp4"
+        output_file_path = detect_output_file_path(containing_path, output_filename, "mp4")
 
         local filters = construct_filter(mpeg4_gif_filters, 720)
 
@@ -75,7 +92,7 @@ local function make_gif_internal(use_mpeg4)
         os.execute(args)
     else
         -- Real GIF
-        output_file_path = output_file_path .. ".gif"
+        output_file_path = detect_output_file_path(containing_path, output_filename, "gif")
 
         local filters = construct_filter(gif_filters, 540)
         local temp_palette_path = os.tmpname() .. ".png"

@@ -38,10 +38,11 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.Bo
 	if message.Document != nil {
 
 		fileID := message.Document.FileID
+		fileUniqueID := message.Document.FileUniqueID
 
-		replyMessages := []string{"Received file " + fileID}
+		replyMessages := []string{"Received FileUniqueID: " + fileUniqueID, "FileID: " + fileID}
 
-		i, err := models.GetInventory(ctx, fileID)
+		i, err := models.GetInventory(ctx, fileUniqueID)
 		if err != nil {
 			if err != datastore.ErrNoSuchEntity {
 				return err
@@ -273,72 +274,74 @@ func commandEditAlias(ctx context.Context, args []string, userID int) (string, e
 }
 
 func commandRegisterInventory(ctx context.Context, args []string, userID int) (string, error) {
-	c := models.GetConfig(ctx)
-	if !c.IsContributor(userID) {
-		return errorMessageNotContributor, nil
-	}
-
-	if len(args) < 3 {
-		return "Usage:\n/g <FileID> <Nickname...>\nExample: /g ABCDEFGH 井口裕香 佐藤利奈", nil
-	}
-
-	fileID := args[1]
-	nicknames := args[2:]
-
-	var keys []*datastore.Key
-	for _, nickname := range nicknames {
-		key, err := models.TryFindOnlyPersonality(ctx, nickname)
-		if err != nil {
-			return "", err
-		}
-
-		if key == nil {
-			return fmt.Sprintf("Unknown Personality %s", nickname), nil
-		}
-		keys = append(keys, key)
-	}
-
-	i, err := models.CreateInventory(ctx, fileID, keys, userID, c)
-	if err != nil {
-		if err == models.ErrorOnlyAdminCanUpdateInventory {
-			return "This GIF is already known. Only admins or its creator can modify it now.", nil
-		}
-		return "", err
-	}
-
-	s, err := i.ToString(ctx)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("Updated Inventory %s", s), nil
+	return "Under migration", nil
+	// c := models.GetConfig(ctx)
+	// if !c.IsContributor(userID) {
+	// 	return errorMessageNotContributor, nil
+	// }
+	//
+	// if len(args) < 3 {
+	// 	return "Usage:\n/g <FileID> <Nickname...>\nExample: /g ABCDEFGH 井口裕香 佐藤利奈", nil
+	// }
+	//
+	// fileID := args[1]
+	// nicknames := args[2:]
+	//
+	// var keys []*datastore.Key
+	// for _, nickname := range nicknames {
+	// 	key, err := models.TryFindOnlyPersonality(ctx, nickname)
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+	//
+	// 	if key == nil {
+	// 		return fmt.Sprintf("Unknown Personality %s", nickname), nil
+	// 	}
+	// 	keys = append(keys, key)
+	// }
+	//
+	// i, err := models.CreateInventory(ctx, fileID, keys, userID, c)
+	// if err != nil {
+	// 	if err == models.ErrorOnlyAdminCanUpdateInventory {
+	// 		return "This GIF is already known. Only admins or its creator can modify it now.", nil
+	// 	}
+	// 	return "", err
+	// }
+	//
+	// s, err := i.ToString(ctx)
+	// if err != nil {
+	// 	return "", err
+	// }
+	// return fmt.Sprintf("Updated Inventory %s", s), nil
 }
 
 func commandReplaceInventoryFileID(ctx context.Context, args []string, userID int) (string, error) {
-	c := models.GetConfig(ctx)
-	if !c.IsAdmin(userID) {
-		return errorMessageNotAdmin, nil
-	}
-
-	if len(args) != 3 {
-		return "Usage:\n/r <OldFileID> <NewFileID>", nil
-	}
-
-	oldFileID := args[1]
-	newFileID := args[2]
-
-	i, err := models.ReplaceFileID(ctx, oldFileID, newFileID)
-	if err != nil {
-		if err == datastore.ErrNoSuchEntity {
-			return "Inventory not found", nil
-		}
-		return "", err
-	}
-
-	s, err := i.ToString(ctx)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("Updated Inventory %s", s), nil
+	return "Under migration", nil
+	// c := models.GetConfig(ctx)
+	// if !c.IsAdmin(userID) {
+	// 	return errorMessageNotAdmin, nil
+	// }
+	//
+	// if len(args) != 3 {
+	// 	return "Usage:\n/r <OldFileID> <NewFileID>", nil
+	// }
+	//
+	// oldFileID := args[1]
+	// newFileID := args[2]
+	//
+	// i, err := models.ReplaceFileID(ctx, oldFileID, newFileID)
+	// if err != nil {
+	// 	if err == datastore.ErrNoSuchEntity {
+	// 		return "Inventory not found", nil
+	// 	}
+	// 	return "", err
+	// }
+	//
+	// s, err := i.ToString(ctx)
+	// if err != nil {
+	// 	return "", err
+	// }
+	// return fmt.Sprintf("Updated Inventory %s", s), nil
 }
 
 func commandManageContributors(ctx context.Context, args []string, userID int) (string, error) {

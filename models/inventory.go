@@ -2,7 +2,6 @@ package models
 
 import (
 	"crypto/md5"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
@@ -26,12 +25,12 @@ var (
 	ErrorOnlyAdminCanUpdateInventory = errors.New("Only admins can update an existing GIF.")
 )
 
-// TODO: Use FileUniqueID as DB Key, and use that as ID of InlineQueryResult
 type Inventory struct {
-	FileID      string
-	FileType    string
-	Personality []*datastore.Key
-	Creator     int
+	FileUniqueID string
+	FileID       string
+	FileType     string
+	Personality  []*datastore.Key
+	Creator      int
 
 	UsageCount int64
 	LastUsed   time.Time
@@ -52,16 +51,16 @@ func (i Inventory) ToString(ctx context.Context) (string, error) {
 		pns = append(pns, p.CanonicalName)
 	}
 
-	return fmt.Sprintf("%s\n%x (%d bytes)\n[%s]", i.FileID, i.MD5Sum, i.FileSize, strings.Join(pns, ", ")), nil
+	return fmt.Sprintf("Unique: %s\n%s\n%x (%d bytes)\n[%s]", i.FileUniqueID, i.FileID, i.MD5Sum, i.FileSize, strings.Join(pns, ", ")), nil
 }
 
-func inventoryKey(ctx context.Context, fileID string) *datastore.Key {
-	return datastore.NewKey(ctx, inventoryEntityKind, fileID, 0, nil)
+func inventoryKey(ctx context.Context, fileUniqueID string) *datastore.Key {
+	return datastore.NewKey(ctx, inventoryEntityKind, fileUniqueID, 0, nil)
 }
 
-func GetInventory(ctx context.Context, fileID string) (*Inventory, error) {
+func GetInventory(ctx context.Context, fileUniqueID string) (*Inventory, error) {
 	i := new(Inventory)
-	key := inventoryKey(ctx, fileID)
+	key := inventoryKey(ctx, fileUniqueID)
 	err := nds.Get(ctx, key, i)
 	return i, err
 }
@@ -103,6 +102,7 @@ func GetInventoryByFile(ctx context.Context, fileID string, fileSize int) (*Inve
 	return i, err
 }
 
+// Not migrated, don't use.
 func CreateInventory(ctx context.Context, fileID string, personality []*datastore.Key, userID int, config Config) (*Inventory, error) {
 	i := new(Inventory)
 
@@ -195,40 +195,22 @@ func FindInventories(ctx context.Context, personalities []*datastore.Key, sortMo
 	return inventories, newCursor, nil
 }
 
-func AllInventoriesFileIDs(ctx context.Context) ([]string, error) {
+func AllInventoriesStorageKeys(ctx context.Context) ([]string, error) {
 	keys, err := datastore.NewQuery(inventoryEntityKind).KeysOnly().GetAll(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var fileIDs []string
+	var storageKeys []string
 	for _, k := range keys {
-		fileIDs = append(fileIDs, k.StringID())
+		storageKeys = append(storageKeys, k.StringID())
 	}
 
-	return fileIDs, nil
+	return storageKeys, nil
 }
 
-func IncrementUsageCounter(ctx context.Context, resultID string) error {
-	// TODO: ResultID will become DB Key
-	// We are using MD5Sum for now. We cannot do a DB query inside a transaction without ancestor.
-	// So this means we do 2 non-cached DB reads (query in GetInventoryByMD5 + strong read inside transaction).
-	// The Get inside GetInventoryByMD5 should be cached.
-
-	b, err := hex.DecodeString(resultID)
-	if err != nil {
-		log.Criticalf(ctx, "Received unrecognized ResultID: %s", resultID)
-		return nil
-	}
-
-	key, _, err := GetInventoryByMD5(ctx, b)
-	if err != nil {
-		if err == datastore.ErrNoSuchEntity {
-			// Silently ignore this.
-			return nil
-		}
-		return err
-	}
+func IncrementUsageCounter(ctx context.Context, fileUniqueID string) error {
+	key := inventoryKey(ctx, fileUniqueID)
 
 	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
 		i := new(Inventory)
@@ -240,7 +222,7 @@ func IncrementUsageCounter(ctx context.Context, resultID string) error {
 		i.UsageCount += 1
 		i.LastUsed = time.Now()
 
-		_, err = nds.Put(ctx, key, i)
+		_, err := nds.Put(ctx, key, i)
 		return err
 	}, &datastore.TransactionOptions{})
 }
@@ -249,6 +231,7 @@ func CountInventories(ctx context.Context, personality *datastore.Key) (int, err
 	return datastore.NewQuery(inventoryEntityKind).KeysOnly().Filter("Personality = ", personality).Count(ctx)
 }
 
+// Not migrated, don't use.
 func ReplaceFileID(ctx context.Context, oldFileID, newFileID string) (*Inventory, error) {
 	i := new(Inventory)
 
@@ -276,29 +259,40 @@ func ReplaceFileID(ctx context.Context, oldFileID, newFileID string) (*Inventory
 	return i, err
 }
 
-func UpdateFileMetadata(ctx context.Context, oldFileID string) error {
-	file, b, err := tgapi.FetchFileInfo(ctx, oldFileID)
+func UpdateFileMetadata(ctx context.Context, oldStorageKey string) error {
+	i := new(Inventory)
+	oldKey := inventoryKey(ctx, oldStorageKey)
+	if err := nds.Get(ctx, oldKey, i); err != nil {
+		if err == datastore.ErrNoSuchEntity {
+			// Silently ignore this.
+			return nil
+		}
+		return err
+	}
+
+	file, b, err := tgapi.FetchFileInfo(ctx, oldStorageKey)
 	if err != nil {
 		return err
 	}
 
 	newFileID := file.FileID
-	if newFileID != oldFileID {
-		log.Infof(ctx, "Detected FileID change %s -> %s", oldFileID, newFileID)
+	fileUniqueID := file.FileUniqueID
+
+	if newFileID != i.FileID {
+		log.Infof(ctx, "Detected FileID change %s -> %s for FileUniqueID %s", oldStorageKey, newFileID, fileUniqueID)
 	}
 
 	if !appengine.IsDevAppServer() {
-		if err := utils.StoreFileToGCS(ctx, newFileID, b); err != nil {
+		if err := utils.StoreFileToGCS(ctx, fileUniqueID, b); err != nil {
 			return err
 		}
 	}
 
 	sum := md5.Sum(b)
-	log.Infof(ctx, "File %s: %x (%d bytes)", newFileID, sum, file.FileSize)
+	log.Infof(ctx, "File %s: %x (%d bytes)", fileUniqueID, sum, file.FileSize)
 
 	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
-		i := new(Inventory)
-		oldKey := inventoryKey(ctx, oldFileID)
+		// Get again so we don't race.
 		if err := nds.Get(ctx, oldKey, i); err != nil {
 			if err == datastore.ErrNoSuchEntity {
 				// Silently ignore this.
@@ -307,16 +301,17 @@ func UpdateFileMetadata(ctx context.Context, oldFileID string) error {
 			return err
 		}
 
+		i.FileUniqueID = fileUniqueID
 		i.FileID = newFileID
 		i.MD5Sum = sum[:]
 		i.FileSize = file.FileSize
 
-		if oldFileID != newFileID {
+		if oldStorageKey != i.FileUniqueID {
 			if err := nds.Delete(ctx, oldKey); err != nil {
 				return err
 			}
 		}
-		_, err := nds.Put(ctx, inventoryKey(ctx, newFileID), i)
+		_, err := nds.Put(ctx, inventoryKey(ctx, i.FileUniqueID), i)
 		return err
-	}, &datastore.TransactionOptions{})
+	}, &datastore.TransactionOptions{XG: true})
 }

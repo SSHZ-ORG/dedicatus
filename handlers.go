@@ -74,9 +74,9 @@ func updateFileMetadata(w http.ResponseWriter, r *http.Request) {
 func queueUpdateFileMetadata(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 
-	ids, err := models.AllInventoriesFileIDs(ctx)
+	ids, err := models.AllInventoriesStorageKeys(ctx)
 	if err != nil {
-		log.Errorf(ctx, "models.AllInventoriesFileIDs: %+v", err)
+		log.Errorf(ctx, "models.AllInventoriesStorageKeys: %+v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 

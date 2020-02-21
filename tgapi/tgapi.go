@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"github.com/SSHZ-ORG/dedicatus/config"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
@@ -19,15 +19,18 @@ func NewTgBot(ctx context.Context) (*tgbotapi.BotAPI, error) {
 }
 
 func NewTgBotNoCheck(ctx context.Context) *tgbotapi.BotAPI {
-	return &tgbotapi.BotAPI{
+	bot := &tgbotapi.BotAPI{
 		Token:  config.TgToken,
 		Client: urlfetch.Client(ctx),
 		Buffer: 100,
 	}
+	bot.SetAPIEndpoint(tgbotapi.APIEndpoint)
+	return bot
 }
 
 func RegisterWebhook(ctx context.Context, bot *tgbotapi.BotAPI) (tgbotapi.APIResponse, error) {
-	return bot.SetWebhook(tgbotapi.NewWebhook(fmt.Sprintf("https://%s%s", appengine.DefaultVersionHostname(ctx), TgWebhookPath(bot.Token))))
+	c := tgbotapi.NewWebhook(fmt.Sprintf("https://%s%s", appengine.DefaultVersionHostname(ctx), TgWebhookPath(bot.Token)))
+	return bot.Request(c)
 }
 
 func TgWebhookPath(token string) string {

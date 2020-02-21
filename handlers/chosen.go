@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"github.com/SSHZ-ORG/dedicatus/models"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/net/context"
 )
 

@@ -8,7 +8,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/models/sortmode"
 	"github.com/SSHZ-ORG/dedicatus/utils"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
@@ -35,7 +35,7 @@ func HandleInlineQuery(ctx context.Context, update tgbotapi.Update, bot *tgbotap
 
 	log.Debugf(ctx, "AnswerInlineQuery: %+v", *response)
 
-	_, err = bot.AnswerInlineQuery(*response)
+	_, err = bot.Request(response)
 	return err
 }
 

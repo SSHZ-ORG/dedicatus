@@ -10,15 +10,15 @@ import (
 
 const updateFileMetadataQueue = "update-file-metadata"
 
-func newUpdateFileMetadataTask(fileID string) *taskqueue.Task {
+func newUpdateFileMetadataTask(storageKey string) *taskqueue.Task {
 	return taskqueue.NewPOSTTask(paths.UpdateFileMetadata, url.Values{
-		"id": []string{fileID},
+		"id": []string{storageKey},
 	})
 }
 
-func ScheduleUpdateFileMetadata(ctx context.Context, fileIDs []string) error {
+func ScheduleUpdateFileMetadata(ctx context.Context, storageKeys []string) error {
 	var ts []*taskqueue.Task
-	for _, id := range fileIDs {
+	for _, id := range storageKeys {
 		ts = append(ts, newUpdateFileMetadataTask(id))
 	}
 

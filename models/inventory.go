@@ -285,7 +285,7 @@ func UpdateFileMetadata(ctx context.Context, oldStorageKey string) error {
 		return err
 	}
 
-	file, b, err := tgapi.FetchFileInfo(ctx, oldStorageKey)
+	file, b, err := tgapi.FetchFileInfo(ctx, i.FileID)
 	if err != nil {
 		return err
 	}

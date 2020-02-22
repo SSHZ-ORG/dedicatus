@@ -12,6 +12,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/scheduler"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
+	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
@@ -51,7 +52,7 @@ func (i Inventory) ToString(ctx context.Context) (string, error) {
 		pns = append(pns, p.CanonicalName)
 	}
 
-	return fmt.Sprintf("Unique: %s\n%s\n%x (%d bytes)\n[%s]", i.FileUniqueID, i.FileID, i.MD5Sum, i.FileSize, strings.Join(pns, ", ")), nil
+	return fmt.Sprintf("UniqueID: %s\n%x (%d bytes)\n[%s]", i.FileUniqueID, i.MD5Sum, i.FileSize, strings.Join(pns, ", ")), nil
 }
 
 func inventoryKey(ctx context.Context, fileUniqueID string) *datastore.Key {
@@ -65,40 +66,54 @@ func GetInventory(ctx context.Context, fileUniqueID string) (*Inventory, error) 
 	return i, err
 }
 
-func GetInventoryByMD5(ctx context.Context, sum []byte) (*datastore.Key, *Inventory, error) {
-	keys, err := datastore.NewQuery(inventoryEntityKind).Filter("MD5Sum =", sum[:]).KeysOnly().GetAll(ctx, nil)
-	if err != nil {
-		return nil, nil, err
+// If not found, returns (nil, datastore.ErrNoSuchEntity)
+func TryGetInventoryByTgDocument(ctx context.Context, document *tgbotapi.Document) (*Inventory, error) {
+	i, err := GetInventory(ctx, document.FileUniqueID)
+	if err == nil {
+		return i, nil
+	}
+	if err != datastore.ErrNoSuchEntity {
+		return nil, err
 	}
 
-	if len(keys) == 0 {
-		return nil, nil, datastore.ErrNoSuchEntity
-	} else if len(keys) > 1 {
-		log.Criticalf(ctx, "Hash conflict (%x)!", sum)
-		return nil, nil, nil
-	}
-
-	i := new(Inventory)
-	err = nds.Get(ctx, keys[0], i)
-	return keys[0], i, err
+	return getInventoryByFile(ctx, document.FileID, document.FileSize)
 }
 
-func GetInventoryByFile(ctx context.Context, fileID string, fileSize int) (*Inventory, error) {
+// Matches the given file with known Inventories without using UniqueID. If not found returns (nil, datastore.ErrNoSuchEntity).
+func getInventoryByFile(ctx context.Context, fileID string, fileSize int) (*Inventory, error) {
 	count, err := datastore.NewQuery(inventoryEntityKind).Filter("FileSize =", fileSize).Count(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if count == 0 {
-		return nil, nil
+		return nil, datastore.ErrNoSuchEntity
 	}
 
 	_, b, err := tgapi.FetchFileInfo(ctx, fileID)
+	if err != nil {
+		return nil, err
+	}
 
 	s := md5.Sum(b)
-	_, i, err := GetInventoryByMD5(ctx, s[:])
-	if err == datastore.ErrNoSuchEntity {
-		return nil, nil
+	return getInventoryByMD5(ctx, s[:])
+}
+
+// If not found, returns (nil, datastore.ErrNoSuchEntity)
+func getInventoryByMD5(ctx context.Context, sum []byte) (*Inventory, error) {
+	keys, err := datastore.NewQuery(inventoryEntityKind).Filter("MD5Sum =", sum[:]).KeysOnly().GetAll(ctx, nil)
+	if err != nil {
+		return nil, err
 	}
+
+	if len(keys) == 0 {
+		return nil, datastore.ErrNoSuchEntity
+	} else if len(keys) > 1 {
+		log.Criticalf(ctx, "Hash conflict (%x)!", sum)
+		return nil, datastore.ErrNoSuchEntity
+	}
+
+	i := new(Inventory)
+	err = nds.Get(ctx, keys[0], i)
 	return i, err
 }
 

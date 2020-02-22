@@ -36,40 +36,7 @@ var commandMap = map[string]func(ctx context.Context, args []string, userID int)
 func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	message := update.Message
 	if message.Document != nil {
-
-		fileID := message.Document.FileID
-		fileUniqueID := message.Document.FileUniqueID
-
-		replyMessages := []string{"Received FileUniqueID: " + fileUniqueID, "FileID: " + fileID}
-
-		i, err := models.GetInventory(ctx, fileUniqueID)
-		if err != nil {
-			if err != datastore.ErrNoSuchEntity {
-				return err
-			}
-			i, err = models.GetInventoryByFile(ctx, fileID, message.Document.FileSize)
-			if err != nil {
-				return err
-			}
-		}
-
-		if i != nil {
-			s, err := i.ToString(ctx)
-			if err != nil {
-				return err
-			}
-
-			replyMessages = append(replyMessages, s)
-		} else {
-			replyMessages = append(replyMessages, "No matching Inventory found.")
-		}
-
-		if len(replyMessages) > 0 {
-			reply := tgbotapi.NewMessage(message.Chat.ID, strings.Join(replyMessages, "\n"))
-			reply.ReplyToMessageID = message.MessageID
-			_, err := bot.Send(reply)
-			return err
-		}
+		return handleDocument(ctx, message, bot)
 	}
 
 	if strings.HasPrefix(message.Text, "/") {
@@ -88,7 +55,7 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.Bo
 		if err != nil {
 			reply := tgbotapi.NewMessage(message.Chat.ID, "Your action triggered an internal server error.")
 			reply.ReplyToMessageID = message.MessageID
-			bot.Send(reply) // Fire and forget
+			_, _ = bot.Send(reply) // Fire and forget
 			return err
 		}
 
@@ -100,6 +67,41 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.Bo
 		}
 	}
 
+	return nil
+}
+
+func handleDocument(ctx context.Context, message *tgbotapi.Message, bot *tgbotapi.BotAPI) error {
+	document := message.Document
+
+	replyMessages := []string{
+		"Received FileUniqueID: " + document.FileUniqueID,
+		"FileID: " + document.FileID,
+	}
+
+	i, err := models.TryGetInventoryByTgDocument(ctx, document)
+	if err != nil {
+		if err != datastore.ErrNoSuchEntity {
+			return err
+		}
+	}
+
+	if i != nil {
+		s, err := i.ToString(ctx)
+		if err != nil {
+			return err
+		}
+
+		replyMessages = append(replyMessages, "Matched to "+s)
+	} else {
+		replyMessages = append(replyMessages, "No matching Inventory found.")
+	}
+
+	if len(replyMessages) > 0 {
+		reply := tgbotapi.NewMessage(message.Chat.ID, strings.Join(replyMessages, "\n"))
+		reply.ReplyToMessageID = message.MessageID
+		_, err := bot.Send(reply)
+		return err
+	}
 	return nil
 }
 

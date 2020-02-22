@@ -35,7 +35,7 @@ var commandMap = map[string]func(ctx context.Context, args []string, userID int)
 
 func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	message := update.Message
-	if message.Document != nil {
+	if message.Document != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Document != nil) {
 		return handleDocument(ctx, message, bot)
 	}
 
@@ -72,6 +72,12 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.Bo
 
 func handleDocument(ctx context.Context, message *tgbotapi.Message, bot *tgbotapi.BotAPI) error {
 	document := message.Document
+	caption := message.Caption
+
+	if message.ReplyToMessage != nil && message.ReplyToMessage.Document != nil {
+		document = message.ReplyToMessage.Document
+		caption = message.Text
+	}
 
 	fileUniqueID := document.FileUniqueID
 	fileID := document.FileID
@@ -104,8 +110,8 @@ func handleDocument(ctx context.Context, message *tgbotapi.Message, bot *tgbotap
 	}
 
 	// Update Inventory, if instructed
-	if allowUpdate && message.Caption != "" {
-		resp, err := handleDocumentCaption(ctx, fileUniqueID, fileID, message.Caption, message.From.ID)
+	if allowUpdate && caption != "" {
+		resp, err := handleDocumentCaption(ctx, fileUniqueID, fileID, caption, message.From.ID)
 		if err != nil {
 			return err
 		}

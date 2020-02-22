@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/utils"
@@ -26,7 +27,6 @@ var commandMap = map[string]func(ctx context.Context, args []string, userID int)
 	"/s":     commandFindPersonality,
 	"/u":     commandUpdatePersonalityNickname,
 	"/a":     commandEditAlias,
-	"/g":     commandRegisterInventory,
 	"/r":     commandReplaceInventoryFileID,
 	"/c":     commandManageContributors,
 	"/kg":    commandQueryKG,
@@ -73,27 +73,43 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.Bo
 func handleDocument(ctx context.Context, message *tgbotapi.Message, bot *tgbotapi.BotAPI) error {
 	document := message.Document
 
-	replyMessages := []string{
-		"Received FileUniqueID: " + document.FileUniqueID,
-		"FileID: " + document.FileID,
-	}
+	fileUniqueID := document.FileUniqueID
+	fileID := document.FileID
+	replyMessages := []string{"Received:\nUniqueID: " + fileUniqueID}
 
+	allowUpdate := true
+
+	// Match Inventory
 	i, err := models.TryGetInventoryByTgDocument(ctx, document)
 	if err != nil {
-		if err != datastore.ErrNoSuchEntity {
+		if err == models.ErrorHashConflict {
+			replyMessages = append(replyMessages, "Hash conflict!")
+			allowUpdate = false
+		} else if err != datastore.ErrNoSuchEntity {
 			return err
 		}
 	}
 
 	if i != nil {
+		fileUniqueID = i.FileUniqueID
+		fileID = i.FileID
+
 		s, err := i.ToString(ctx)
 		if err != nil {
 			return err
 		}
-
-		replyMessages = append(replyMessages, "Matched to "+s)
+		replyMessages = append(replyMessages, "\nMatched to:\n"+s)
 	} else {
-		replyMessages = append(replyMessages, "No matching Inventory found.")
+		replyMessages = append(replyMessages, "\nNo matching Inventory found.")
+	}
+
+	// Update Inventory, if instructed
+	if allowUpdate && message.Caption != "" {
+		resp, err := handleDocumentCaption(ctx, fileUniqueID, fileID, message.Caption, message.From.ID)
+		if err != nil {
+			return err
+		}
+		replyMessages = append(replyMessages, "\n"+resp)
 	}
 
 	if len(replyMessages) > 0 {
@@ -103,6 +119,48 @@ func handleDocument(ctx context.Context, message *tgbotapi.Message, bot *tgbotap
 		return err
 	}
 	return nil
+}
+
+func handleDocumentCaption(ctx context.Context, fileUniqueID, fileID, caption string, userID int) (string, error) {
+	c := models.GetConfig(ctx)
+	if !c.IsContributor(userID) {
+		return errorMessageNotContributor, nil
+	}
+
+	splits := strings.FieldsFunc(caption, unicode.IsSpace)
+	args := splits[:0]
+	for _, e := range splits {
+		if e != "" {
+			args = append(args, e)
+		}
+	}
+
+	var personalityKeys []*datastore.Key
+	for _, nickname := range args {
+		key, err := models.TryFindOnlyPersonality(ctx, nickname)
+		if err != nil {
+			return "", err
+		}
+
+		if key == nil {
+			return fmt.Sprintf("Unknown Personality %s", nickname), nil
+		}
+		personalityKeys = append(personalityKeys, key)
+	}
+
+	i, err := models.CreateOrUpdateInventory(ctx, fileID, fileUniqueID, personalityKeys, userID, c)
+	if err != nil {
+		if err == models.ErrorOnlyAdminCanUpdateInventory {
+			return "This GIF is already known. Only admins or its creator can modify it now.", nil
+		}
+		return "", err
+	}
+
+	s, err := i.ToString(ctx)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Updated to:\n%s", s), nil
 }
 
 func commandStart(ctx context.Context, args []string, userID int) (string, error) {
@@ -273,48 +331,6 @@ func commandEditAlias(ctx context.Context, args []string, userID int) (string, e
 		return "", err
 	}
 	return fmt.Sprintf("Updated Alias %s", s), nil
-}
-
-func commandRegisterInventory(ctx context.Context, args []string, userID int) (string, error) {
-	return "Under migration", nil
-	// c := models.GetConfig(ctx)
-	// if !c.IsContributor(userID) {
-	// 	return errorMessageNotContributor, nil
-	// }
-	//
-	// if len(args) < 3 {
-	// 	return "Usage:\n/g <FileID> <Nickname...>\nExample: /g ABCDEFGH 井口裕香 佐藤利奈", nil
-	// }
-	//
-	// fileID := args[1]
-	// nicknames := args[2:]
-	//
-	// var keys []*datastore.Key
-	// for _, nickname := range nicknames {
-	// 	key, err := models.TryFindOnlyPersonality(ctx, nickname)
-	// 	if err != nil {
-	// 		return "", err
-	// 	}
-	//
-	// 	if key == nil {
-	// 		return fmt.Sprintf("Unknown Personality %s", nickname), nil
-	// 	}
-	// 	keys = append(keys, key)
-	// }
-	//
-	// i, err := models.CreateInventory(ctx, fileID, keys, userID, c)
-	// if err != nil {
-	// 	if err == models.ErrorOnlyAdminCanUpdateInventory {
-	// 		return "This GIF is already known. Only admins or its creator can modify it now.", nil
-	// 	}
-	// 	return "", err
-	// }
-	//
-	// s, err := i.ToString(ctx)
-	// if err != nil {
-	// 	return "", err
-	// }
-	// return fmt.Sprintf("Updated Inventory %s", s), nil
 }
 
 func commandReplaceInventoryFileID(ctx context.Context, args []string, userID int) (string, error) {

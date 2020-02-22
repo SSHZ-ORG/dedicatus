@@ -24,6 +24,7 @@ const maxItems = 50
 
 var (
 	ErrorOnlyAdminCanUpdateInventory = errors.New("Only admins can update an existing GIF.")
+	ErrorHashConflict                = errors.New("Hash conflict")
 )
 
 type Inventory struct {
@@ -109,7 +110,7 @@ func getInventoryByMD5(ctx context.Context, sum []byte) (*Inventory, error) {
 		return nil, datastore.ErrNoSuchEntity
 	} else if len(keys) > 1 {
 		log.Criticalf(ctx, "Hash conflict (%x)!", sum)
-		return nil, datastore.ErrNoSuchEntity
+		return nil, ErrorHashConflict
 	}
 
 	i := new(Inventory)
@@ -117,12 +118,11 @@ func getInventoryByMD5(ctx context.Context, sum []byte) (*Inventory, error) {
 	return i, err
 }
 
-// Not migrated, don't use.
-func CreateInventory(ctx context.Context, fileID string, personality []*datastore.Key, userID int, config Config) (*Inventory, error) {
+func CreateOrUpdateInventory(ctx context.Context, fileID, fileUniqueID string, personality []*datastore.Key, userID int, config Config) (*Inventory, error) {
 	i := new(Inventory)
 
 	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {
-		key := inventoryKey(ctx, fileID)
+		key := inventoryKey(ctx, fileUniqueID)
 		err := nds.Get(ctx, key, i)
 
 		// This is an existing Inventory, only admins or original creator can update it.
@@ -134,6 +134,7 @@ func CreateInventory(ctx context.Context, fileID string, personality []*datastor
 		}
 
 		i.FileID = fileID
+		i.FileUniqueID = fileUniqueID
 		i.FileType = utils.FileTypeMPEG4GIF
 		i.Personality = personality
 		i.LastUsed = time.Now()
@@ -150,7 +151,7 @@ func CreateInventory(ctx context.Context, fileID string, personality []*datastor
 
 		if shouldScheduleMetadataUpdate {
 			// New File. Schedule metadata update.
-			if err := scheduler.ScheduleUpdateFileMetadata(ctx, []string{fileID}); err != nil {
+			if err := scheduler.ScheduleUpdateFileMetadata(ctx, []string{fileUniqueID}); err != nil {
 				return err
 			}
 		}

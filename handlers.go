@@ -68,6 +68,7 @@ func updateFileMetadata(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Errorf(ctx, "models.UpdateFileMetadata: %+v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -78,12 +79,14 @@ func queueUpdateFileMetadata(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Errorf(ctx, "models.AllInventoriesStorageKeys: %+v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	err = scheduler.ScheduleUpdateFileMetadata(ctx, ids)
 	if err != nil {
 		log.Errorf(ctx, "scheduler.ScheduleUpdateFileMetadata: %+v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -97,6 +100,7 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Errorf(ctx, "%v", err)
 		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
 	}
 
 	log.Infof(ctx, "%v", string(bytes))
@@ -123,5 +127,6 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Errorf(ctx, "%v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 }

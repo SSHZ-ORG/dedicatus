@@ -1,6 +1,6 @@
 package utils
 
-import tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+import "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 const (
 	FileTypeMPEG4GIF = "mpeg4_gif"

@@ -26,7 +26,6 @@ var commandMap = map[string]func(ctx context.Context, args []string, userID int)
 	"/s":     commandFindPersonality,
 	"/u":     commandUpdatePersonalityNickname,
 	"/a":     commandEditAlias,
-	"/r":     commandReplaceInventoryFileID,
 	"/c":     commandManageContributors,
 	"/kg":    commandQueryKG,
 	"/stats": commandStats,
@@ -133,6 +132,32 @@ func handleDocumentCaption(ctx context.Context, fileUniqueID, fileID, caption st
 	}
 
 	args := strings.Fields(caption)
+
+	if args[0] == "/r" {
+		// Use the received document to replace some existing Inventory.
+		if !c.IsAdmin(userID) {
+			return errorMessageNotAdmin, nil
+		}
+
+		if len(args) != 2 {
+			return "Usage:\n/r <OldFileUniqueID>", nil
+		}
+
+		oldFileUniqueID := args[1]
+		i, err := models.ReplaceFileID(ctx, oldFileUniqueID, fileID, fileUniqueID)
+		if err != nil {
+			if err == datastore.ErrNoSuchEntity {
+				return "Old Inventory not found", nil
+			}
+			return "", err
+		}
+
+		s, err := i.ToString(ctx)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("Replaced Inventory %s to:\n%s", oldFileUniqueID, s), nil
+	}
 
 	var personalityKeys []*datastore.Key
 	for _, nickname := range args {
@@ -330,35 +355,6 @@ func commandEditAlias(ctx context.Context, args []string, userID int) (string, e
 		return "", err
 	}
 	return fmt.Sprintf("Updated Alias %s", s), nil
-}
-
-func commandReplaceInventoryFileID(ctx context.Context, args []string, userID int) (string, error) {
-	return "Under migration", nil
-	// c := models.GetConfig(ctx)
-	// if !c.IsAdmin(userID) {
-	// 	return errorMessageNotAdmin, nil
-	// }
-	//
-	// if len(args) != 3 {
-	// 	return "Usage:\n/r <OldFileID> <NewFileID>", nil
-	// }
-	//
-	// oldFileID := args[1]
-	// newFileID := args[2]
-	//
-	// i, err := models.ReplaceFileID(ctx, oldFileID, newFileID)
-	// if err != nil {
-	// 	if err == datastore.ErrNoSuchEntity {
-	// 		return "Inventory not found", nil
-	// 	}
-	// 	return "", err
-	// }
-	//
-	// s, err := i.ToString(ctx)
-	// if err != nil {
-	// 	return "", err
-	// }
-	// return fmt.Sprintf("Updated Inventory %s", s), nil
 }
 
 func commandManageContributors(ctx context.Context, args []string, userID int) (string, error) {

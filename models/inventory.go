@@ -247,17 +247,17 @@ func CountInventories(ctx context.Context, personality *datastore.Key) (int, err
 	return datastore.NewQuery(inventoryEntityKind).KeysOnly().Filter("Personality = ", personality).Count(ctx)
 }
 
-// Not migrated, don't use.
-func ReplaceFileID(ctx context.Context, oldFileID, newFileID string) (*Inventory, error) {
+func ReplaceFileID(ctx context.Context, oldFileUniqueID, newFileID, newFileUniqueID string) (*Inventory, error) {
 	i := new(Inventory)
 
 	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {
-		oldKey := inventoryKey(ctx, oldFileID)
+		oldKey := inventoryKey(ctx, oldFileUniqueID)
 		if err := nds.Get(ctx, oldKey, i); err != nil {
 			return err
 		}
 
 		i.FileID = newFileID
+		i.FileUniqueID = newFileUniqueID
 
 		i.MD5Sum = nil
 		i.FileSize = 0
@@ -265,11 +265,11 @@ func ReplaceFileID(ctx context.Context, oldFileID, newFileID string) (*Inventory
 		if err := nds.Delete(ctx, oldKey); err != nil {
 			return err
 		}
-		if _, err := nds.Put(ctx, inventoryKey(ctx, newFileID), i); err != nil {
+		if _, err := nds.Put(ctx, inventoryKey(ctx, newFileUniqueID), i); err != nil {
 			return err
 		}
 
-		return scheduler.ScheduleUpdateFileMetadata(ctx, []string{newFileID})
+		return scheduler.ScheduleUpdateFileMetadata(ctx, []string{newFileUniqueID})
 	}, &datastore.TransactionOptions{XG: true})
 
 	return i, err

@@ -34,13 +34,7 @@ func HandleInlineQuery(ctx context.Context, update tgbotapi.Update, bot *tgbotap
 }
 
 func prepareResponse(ctx context.Context, query *tgbotapi.InlineQuery) (*tgbotapi.InlineConfig, error) {
-	rawQs := strings.Split(strings.TrimSpace(query.Query), " ")
-	qs := rawQs[:0]
-	for _, e := range rawQs {
-		if e != "" {
-			qs = append(qs, e)
-		}
-	}
+	qs := strings.Fields(query.Query)
 
 	// Determine QueryMode
 	queryMode := sortmode.UsageCountDesc

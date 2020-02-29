@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"unicode"
 
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/utils"
@@ -43,7 +42,7 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.Bo
 		replyMessage := ""
 		var err error
 
-		args := strings.Split(message.Text, " ")
+		args := strings.Fields(message.Text)
 		userID := message.From.ID
 
 		if handler, ok := commandMap[args[0]]; ok {
@@ -133,13 +132,7 @@ func handleDocumentCaption(ctx context.Context, fileUniqueID, fileID, caption st
 		return errorMessageNotContributor, nil
 	}
 
-	splits := strings.FieldsFunc(caption, unicode.IsSpace)
-	args := splits[:0]
-	for _, e := range splits {
-		if e != "" {
-			args = append(args, e)
-		}
-	}
+	args := strings.Fields(caption)
 
 	var personalityKeys []*datastore.Key
 	for _, nickname := range args {

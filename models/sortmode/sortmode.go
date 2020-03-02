@@ -13,15 +13,15 @@ const (
 
 func ParseQuerySortMode(s string) SortMode {
 	switch s {
-	case "+":
+	case "+", "＋":
 		return UsageCountDesc
-	case "-":
+	case "-", "ー":
 		return UsageCountAsc
-	case ">":
+	case ">", "》", "＞":
 		return LastUsedDesc
-	case "<":
+	case "<", "《", "＜":
 		return LastUsedAsc
-	case "?":
+	case "?", "？":
 		return RandomDraw
 	}
 	return Undefined

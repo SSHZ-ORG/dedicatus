@@ -20,7 +20,7 @@ import (
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc(tgapi.TgWebhookPath(config.TgToken), webhook)
-	r.HandleFunc("/admin/register", register)
+	r.HandleFunc(paths.RegisterWebhook, registerWebhook)
 	r.HandleFunc(paths.UpdateFileMetadata, updateFileMetadata)
 	r.HandleFunc(paths.QueueUpdateFileMetadata, queueUpdateFileMetadata)
 
@@ -28,7 +28,7 @@ func main() {
 	appengine.Main()
 }
 
-func register(w http.ResponseWriter, r *http.Request) {
+func registerWebhook(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 
 	err := models.CreateConfig(ctx)

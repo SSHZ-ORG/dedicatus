@@ -89,6 +89,28 @@ func GetKGQueryResult(ctx context.Context, query string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	encoded, err := json.MarshalIndent(result, "", "    ")
+
+	cleanDetailedDescription(ctx, result)
+	encoded, err := json.MarshalIndent(result, "", "  ")
 	return string(encoded), err
+}
+
+// Remove the auto-translated versions of detailedDescription. Operates as side effect on input map.
+func cleanDetailedDescription(ctx context.Context, result map[string]interface{}) {
+	defer func() {
+		if v := recover(); v != nil {
+			// Some type assertion failed. Don't care, just log.
+			log.Warningf(ctx, "cleanDetailedDescription: %v", v)
+		}
+	}()
+
+	var o []map[string]interface{}
+	for _, i := range result["detailedDescription"].([]interface{}) {
+		m := i.(map[string]interface{})
+		if m["inLanguage"].(string) != "en" && strings.HasPrefix(m["url"].(string), "https://en.wikipedia.org/") {
+			continue
+		}
+		o = append(o, m)
+	}
+	result["detailedDescription"] = o
 }

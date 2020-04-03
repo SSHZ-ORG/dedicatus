@@ -30,6 +30,7 @@ var (
 type Inventory struct {
 	FileUniqueID string
 	FileID       string
+	FileName     string
 	FileType     string
 	Personality  []*datastore.Key
 	Creator      int
@@ -53,7 +54,7 @@ func (i Inventory) ToString(ctx context.Context) (string, error) {
 		pns = append(pns, p.CanonicalName)
 	}
 
-	return fmt.Sprintf("UniqueID: %s\n%x (%d bytes)\n[%s]", i.FileUniqueID, i.MD5Sum, i.FileSize, strings.Join(pns, ", ")), nil
+	return fmt.Sprintf("%s\nUniqueID: %s\n%x (%d bytes)\n[%s]", i.FileName, i.FileUniqueID, i.MD5Sum, i.FileSize, strings.Join(pns, ", ")), nil
 }
 
 func inventoryKey(ctx context.Context, fileUniqueID string) *datastore.Key {
@@ -118,7 +119,7 @@ func getInventoryByMD5(ctx context.Context, sum []byte) (*Inventory, error) {
 	return i, err
 }
 
-func CreateOrUpdateInventory(ctx context.Context, fileID, fileUniqueID string, personality []*datastore.Key, userID int, config Config) (*Inventory, error) {
+func CreateOrUpdateInventory(ctx context.Context, fileID, fileUniqueID, fileName string, personality []*datastore.Key, userID int, config Config) (*Inventory, error) {
 	i := new(Inventory)
 
 	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {
@@ -135,6 +136,12 @@ func CreateOrUpdateInventory(ctx context.Context, fileID, fileUniqueID string, p
 
 		i.FileID = fileID
 		i.FileUniqueID = fileUniqueID
+
+		// For existing Inventory that we know the name, don't override.
+		if i.FileName == "" {
+			i.FileName = fileName
+		}
+
 		i.FileType = utils.FileTypeMPEG4GIF
 		i.Personality = personality
 		i.LastUsed = time.Now()
@@ -247,7 +254,7 @@ func CountInventories(ctx context.Context, personality *datastore.Key) (int, err
 	return datastore.NewQuery(inventoryEntityKind).KeysOnly().Filter("Personality = ", personality).Count(ctx)
 }
 
-func ReplaceFileID(ctx context.Context, oldFileUniqueID, newFileID, newFileUniqueID string) (*Inventory, error) {
+func ReplaceFileID(ctx context.Context, oldFileUniqueID, newFileID, newFileUniqueID, newFileName string) (*Inventory, error) {
 	i := new(Inventory)
 
 	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {
@@ -258,6 +265,7 @@ func ReplaceFileID(ctx context.Context, oldFileUniqueID, newFileID, newFileUniqu
 
 		i.FileID = newFileID
 		i.FileUniqueID = newFileUniqueID
+		i.FileName = newFileName
 
 		i.MD5Sum = nil
 		i.FileSize = 0
@@ -330,4 +338,20 @@ func UpdateFileMetadata(ctx context.Context, oldStorageKey string) error {
 		_, err := nds.Put(ctx, inventoryKey(ctx, i.FileUniqueID), i)
 		return err
 	}, &datastore.TransactionOptions{XG: true})
+}
+
+func OverrideFileName(ctx context.Context, fileUniqueID, fileName string) error {
+	i := new(Inventory)
+	key := inventoryKey(ctx, fileUniqueID)
+
+	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
+		if err := nds.Get(ctx, key, i); err != nil {
+			return err
+		}
+
+		i.FileName = fileName
+
+		_, err := nds.Put(ctx, key, i)
+		return err
+	}, &datastore.TransactionOptions{})
 }

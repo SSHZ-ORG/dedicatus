@@ -79,7 +79,8 @@ func handleDocument(ctx context.Context, message *tgbotapi.Message, bot *tgbotap
 
 	fileUniqueID := document.FileUniqueID
 	fileID := document.FileID
-	replyMessages := []string{"Received:\nUniqueID: " + fileUniqueID}
+	fileName := document.FileName
+	replyMessages := []string{"Received:\n" + fileName + "\nUniqueID: " + fileUniqueID}
 
 	allowUpdate := true
 
@@ -107,13 +108,23 @@ func handleDocument(ctx context.Context, message *tgbotapi.Message, bot *tgbotap
 		replyMessages = append(replyMessages, "\nNo matching Inventory found.")
 	}
 
-	// Update Inventory, if instructed
-	if allowUpdate && caption != "" {
-		resp, err := handleDocumentCaption(ctx, fileUniqueID, fileID, caption, message.From.ID)
-		if err != nil {
-			return err
+	// OK, we either didn't know this Inventory before, or it matches something without hash conflict.
+	if allowUpdate {
+		if caption != "" {
+			// Update Inventory, if instructed
+			resp, err := handleDocumentCaption(ctx, fileUniqueID, fileID, fileName, caption, message.From.ID)
+			if err != nil {
+				return err
+			}
+			replyMessages = append(replyMessages, "\n"+resp)
+		} else {
+			if i != nil && i.FileName == "" {
+				// Existing Inventory but we don't know FileName. Backfill the field.
+				if err := models.OverrideFileName(ctx, fileUniqueID, fileName); err != nil {
+					return err
+				}
+			}
 		}
-		replyMessages = append(replyMessages, "\n"+resp)
 	}
 
 	if len(replyMessages) > 0 {
@@ -125,7 +136,7 @@ func handleDocument(ctx context.Context, message *tgbotapi.Message, bot *tgbotap
 	return nil
 }
 
-func handleDocumentCaption(ctx context.Context, fileUniqueID, fileID, caption string, userID int) (string, error) {
+func handleDocumentCaption(ctx context.Context, fileUniqueID, fileID, fileName, caption string, userID int) (string, error) {
 	c := models.GetConfig(ctx)
 	if !c.IsContributor(userID) {
 		return errorMessageNotContributor, nil
@@ -144,7 +155,7 @@ func handleDocumentCaption(ctx context.Context, fileUniqueID, fileID, caption st
 		}
 
 		oldFileUniqueID := args[1]
-		i, err := models.ReplaceFileID(ctx, oldFileUniqueID, fileID, fileUniqueID)
+		i, err := models.ReplaceFileID(ctx, oldFileUniqueID, fileID, fileUniqueID, fileName)
 		if err != nil {
 			if err == datastore.ErrNoSuchEntity {
 				return "Old Inventory not found", nil
@@ -156,7 +167,7 @@ func handleDocumentCaption(ctx context.Context, fileUniqueID, fileID, caption st
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("Replaced Inventory %s to:\n%s", oldFileUniqueID, s), nil
+		return fmt.Sprintf("Replaced Inventory %s with:\n%s", oldFileUniqueID, s), nil
 	}
 
 	var personalityKeys []*datastore.Key
@@ -172,7 +183,7 @@ func handleDocumentCaption(ctx context.Context, fileUniqueID, fileID, caption st
 		personalityKeys = append(personalityKeys, key)
 	}
 
-	i, err := models.CreateOrUpdateInventory(ctx, fileID, fileUniqueID, personalityKeys, userID, c)
+	i, err := models.CreateOrUpdateInventory(ctx, fileID, fileUniqueID, fileName, personalityKeys, userID, c)
 	if err != nil {
 		if err == models.ErrorOnlyAdminCanUpdateInventory {
 			return "This GIF is already known. Only admins or its creator can modify it now.", nil

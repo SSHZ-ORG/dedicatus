@@ -139,5 +139,5 @@ end
 
 mp.add_key_binding("g", "set_gif_start", set_gif_start)
 mp.add_key_binding("G", "set_gif_end", set_gif_end)
-mp.add_key_binding("Ctrl+g", "make_gif", make_mpeg4_gif)
-mp.add_key_binding("Ctrl+G", "make_gif_with_subtitles", make_gif)
+mp.add_key_binding("Ctrl+g", "make_mpeg4_gif", make_mpeg4_gif)
+mp.add_key_binding("Ctrl+G", "make_gif", make_gif)

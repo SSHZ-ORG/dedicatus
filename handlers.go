@@ -10,6 +10,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/paths"
 	"github.com/SSHZ-ORG/dedicatus/scheduler"
+	"github.com/SSHZ-ORG/dedicatus/scheduler/metadatamode"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/gorilla/mux"
@@ -64,7 +65,9 @@ func updateFileMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := models.UpdateFileMetadata(ctx, id)
+	mode := metadatamode.FromString(r.FormValue("mode"))
+
+	err := models.UpdateFileMetadata(ctx, id, mode)
 	if err != nil {
 		log.Errorf(ctx, "models.UpdateFileMetadata: %+v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -82,7 +85,9 @@ func queueUpdateFileMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = scheduler.ScheduleUpdateFileMetadata(ctx, ids)
+	mode := metadatamode.FromString(r.FormValue("mode"))
+
+	err = scheduler.ScheduleUpdateFileMetadata(ctx, ids, mode)
 	if err != nil {
 		log.Errorf(ctx, "scheduler.ScheduleUpdateFileMetadata: %+v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

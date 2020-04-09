@@ -10,12 +10,12 @@ import (
 
 	"github.com/SSHZ-ORG/dedicatus/models/sortmode"
 	"github.com/SSHZ-ORG/dedicatus/scheduler"
+	"github.com/SSHZ-ORG/dedicatus/scheduler/metadatamode"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
-	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
 )
@@ -158,7 +158,7 @@ func CreateOrUpdateInventory(ctx context.Context, fileID, fileUniqueID, fileName
 
 		if shouldScheduleMetadataUpdate {
 			// New File. Schedule metadata update.
-			if err := scheduler.ScheduleUpdateFileMetadata(ctx, []string{fileUniqueID}); err != nil {
+			if err := scheduler.ScheduleUpdateFileMetadata(ctx, []string{fileUniqueID}, metadatamode.Default); err != nil {
 				return err
 			}
 		}
@@ -277,67 +277,10 @@ func ReplaceFileID(ctx context.Context, oldFileUniqueID, newFileID, newFileUniqu
 			return err
 		}
 
-		return scheduler.ScheduleUpdateFileMetadata(ctx, []string{newFileUniqueID})
+		return scheduler.ScheduleUpdateFileMetadata(ctx, []string{newFileUniqueID}, metadatamode.Default)
 	}, &datastore.TransactionOptions{XG: true})
 
 	return i, err
-}
-
-func UpdateFileMetadata(ctx context.Context, oldStorageKey string) error {
-	i := new(Inventory)
-	oldKey := inventoryKey(ctx, oldStorageKey)
-	if err := nds.Get(ctx, oldKey, i); err != nil {
-		if err == datastore.ErrNoSuchEntity {
-			// Silently ignore this.
-			return nil
-		}
-		return err
-	}
-
-	file, b, err := tgapi.FetchFileInfo(ctx, i.FileID)
-	if err != nil {
-		return err
-	}
-
-	newFileID := file.FileID
-	fileUniqueID := file.FileUniqueID
-
-	if newFileID != i.FileID {
-		log.Infof(ctx, "Detected FileID change %s -> %s for FileUniqueID %s", oldStorageKey, newFileID, fileUniqueID)
-	}
-
-	if !appengine.IsDevAppServer() {
-		if err := utils.StoreFileToGCS(ctx, fileUniqueID, b); err != nil {
-			return err
-		}
-	}
-
-	sum := md5.Sum(b)
-	log.Infof(ctx, "File %s: %x (%d bytes)", fileUniqueID, sum, file.FileSize)
-
-	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
-		// Get again so we don't race.
-		if err := nds.Get(ctx, oldKey, i); err != nil {
-			if err == datastore.ErrNoSuchEntity {
-				// Silently ignore this.
-				return nil
-			}
-			return err
-		}
-
-		i.FileUniqueID = fileUniqueID
-		i.FileID = newFileID
-		i.MD5Sum = sum[:]
-		i.FileSize = file.FileSize
-
-		if oldStorageKey != i.FileUniqueID {
-			if err := nds.Delete(ctx, oldKey); err != nil {
-				return err
-			}
-		}
-		_, err := nds.Put(ctx, inventoryKey(ctx, i.FileUniqueID), i)
-		return err
-	}, &datastore.TransactionOptions{XG: true})
 }
 
 func OverrideFileName(ctx context.Context, fileUniqueID, fileName string) error {

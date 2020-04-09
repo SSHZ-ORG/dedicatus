@@ -4,22 +4,24 @@ import (
 	"net/url"
 
 	"github.com/SSHZ-ORG/dedicatus/paths"
+	"github.com/SSHZ-ORG/dedicatus/scheduler/metadatamode"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/taskqueue"
 )
 
 const updateFileMetadataQueue = "update-file-metadata"
 
-func newUpdateFileMetadataTask(storageKey string) *taskqueue.Task {
+func newUpdateFileMetadataTask(storageKey string, mode metadatamode.MetadataMode) *taskqueue.Task {
 	return taskqueue.NewPOSTTask(paths.UpdateFileMetadata, url.Values{
-		"id": []string{storageKey},
+		"id":   []string{storageKey},
+		"mode": []string{mode.ToString()},
 	})
 }
 
-func ScheduleUpdateFileMetadata(ctx context.Context, storageKeys []string) error {
+func ScheduleUpdateFileMetadata(ctx context.Context, storageKeys []string, mode metadatamode.MetadataMode) error {
 	var ts []*taskqueue.Task
 	for _, id := range storageKeys {
-		ts = append(ts, newUpdateFileMetadataTask(id))
+		ts = append(ts, newUpdateFileMetadataTask(id, mode))
 	}
 
 	for _, batch := range batchize(ts) {

@@ -15,6 +15,20 @@ local function esc(s)
     return string.gsub(s, "'", "'\\''")
 end
 
+-- split a string
+local function split(s, delimiter)
+    local result = {}
+    local from = 1
+    local delim_from, delim_to = string.find(s, delimiter, from)
+    while delim_from do
+        table.insert(result, string.sub(s, from, delim_from - 1))
+        from = delim_to + 1
+        delim_from, delim_to = string.find(s, delimiter, from)
+    end
+    table.insert(result, string.sub(s, from))
+    return result
+end
+
 local function construct_filter(in_filter, max_aspect)
     local filters = {}
 
@@ -68,6 +82,31 @@ local function detect_output_file_path(containing_path, filename, ext)
     return utils.join_path(os.getenv("HOME"), filename_with_ext)
 end
 
+local function detect_dvd_bd_prefix(containing_path)
+    local splitter = package.config:sub(1, 1)
+    local segments = split(containing_path, splitter)
+
+    for i = #segments, 1, -1 do
+        if segments[i] == "" or segments[i] == "." then
+            table.remove(segments, i)
+        end
+    end
+
+    if segments[#segments] == "STREAM" then
+        -- BDMV
+        for i = #segments, 1, -1 do
+            local s = segments[i]
+            if not (s == "STREAM" or s == "BDMV" or s == "BD_VIDEO") then
+                return s .. "_"
+            end
+        end
+    elseif segments[#segments] == "VIDEO_TS" then
+        -- DVD
+        return segments[#segments - 1] .. "_"
+    end
+    return ""
+end
+
 local function make_gif_internal(use_mpeg4)
     local start_time_l = start_time
     local end_time_l = end_time
@@ -85,7 +124,7 @@ local function make_gif_internal(use_mpeg4)
     local containing_path = utils.split_path(input_file_path)
     local input_file_name_no_ext = mp.get_property("filename/no-ext")
 
-    local output_filename = string.format('%s_%s_%s', input_file_name_no_ext, start_time_l, end_time_l)
+    local output_filename = detect_dvd_bd_prefix(containing_path) .. string.format('%s_%s_%s', input_file_name_no_ext, start_time_l, end_time_l)
     local output_file_path
 
     if use_mpeg4 then

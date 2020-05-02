@@ -133,7 +133,7 @@ local function make_gif_internal(use_mpeg4)
 
         local filters = construct_filter(mpeg4_gif_filters, 720)
 
-        local args = string.format("ffmpeg -v warning -ss %s -i '%s' -t %s -c:v libx264 -pix_fmt yuv420p -an -filter:v \"%s\" -y '%s'", position, esc(input_file_path), duration, filters, esc(output_file_path))
+        local args = string.format("ffmpeg -v warning -ss %s -i '%s' -t %s -c:v libx264 -pix_fmt yuv420p -an -filter:v '%s' -y '%s'", position, esc(input_file_path), duration, filters, esc(output_file_path))
         msg.info(args)
         os.execute(args)
     else

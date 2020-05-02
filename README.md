@@ -2,7 +2,7 @@
 
 A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine.
 
-![](https://github.com/SSHZ-ORG/dedicatus/blob/master/docs/media/inline.png)
+![](docs/media/inline.png)
 
 ## 使用方法
 
@@ -20,6 +20,10 @@ A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine
 3. 找一个 Admin，告知想要增加的声优和别名。
 
 若您找不到一个 Admin，可以直接在本项目提交 Issue。
+
+### ~~再~~生产 GIF
+
+参见 [extras/mpv_gif](extras/mpv_gif)。
 
 ### 添加 GIF
 

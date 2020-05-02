@@ -1,5 +1,8 @@
 -- Create animated GIFs with mpv and ffmpeg
 -- Usage: "g" to set start frame, "G" to set end frame, "Ctrl+g" to create MPEG4_GIF, "Ctrl+G" to create GIF.
+
+-- Credits: This is largely inspired by https://gist.github.com/Ruin0x11/8fae0a9341b41015935f76f913b28d2a
+
 local msg = require 'mp.msg'
 local utils = require 'mp.utils'
 
@@ -15,20 +18,16 @@ local is_windows = package.config:sub(1, 1) == "\\"
 
 local function esc(s)
     if is_windows then
-        -- Windows
         return string.gsub(s, "\"", "\"\"")
     else
-        -- *nix
         return string.gsub(s, "'", "'\\''")
     end
 end
 
 local function wrap_param(s)
     if is_windows then
-        -- Windows
         return "\"" .. s .. "\""
     else
-        -- *nix
         return "'" .. s .. "'"
     end
 end

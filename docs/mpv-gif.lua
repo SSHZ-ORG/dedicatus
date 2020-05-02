@@ -11,8 +11,26 @@ local start_time = -1
 local end_time = -1
 
 -- shell escape
+local is_windows = package.config:sub(1, 1) == "\\"
+
 local function esc(s)
-    return string.gsub(s, "'", "'\\''")
+    if is_windows then
+        -- Windows
+        return string.gsub(s, "\"", "\"\"")
+    else
+        -- *nix
+        return string.gsub(s, "'", "'\\''")
+    end
+end
+
+local function wrap_param(s)
+    if is_windows then
+        -- Windows
+        return "\"" .. s .. "\""
+    else
+        -- *nix
+        return "'" .. s .. "'"
+    end
 end
 
 -- split a string
@@ -133,7 +151,7 @@ local function make_gif_internal(use_mpeg4)
 
         local filters = construct_filter(mpeg4_gif_filters, 720)
 
-        local args = string.format("ffmpeg -v warning -ss %s -i '%s' -t %s -c:v libx264 -pix_fmt yuv420p -an -filter:v '%s' -y '%s'", position, esc(input_file_path), duration, filters, esc(output_file_path))
+        local args = string.format("ffmpeg -v warning -ss %s -i %s -t %s -c:v libx264 -pix_fmt yuv420p -an -filter:v %s -y %s", position, wrap_param(esc(input_file_path)), duration, wrap_param(filters), wrap_param(esc(output_file_path)))
         msg.info(args)
         os.execute(args)
     else
@@ -144,12 +162,12 @@ local function make_gif_internal(use_mpeg4)
         local temp_palette_path = os.tmpname() .. ".png"
 
         -- first, create the palette
-        local args = string.format("ffmpeg -v warning -ss %s -t %s -i '%s' -vf '%s,palettegen' -y '%s'", position, duration, esc(input_file_path), filters, esc(temp_palette_path))
+        local args = string.format("ffmpeg -v warning -ss %s -t %s -i %s -vf %s -y %s", position, duration, wrap_param(esc(input_file_path)), wrap_param(filters .. ",palettegen"), wrap_param(esc(temp_palette_path)))
         msg.info(args)
         os.execute(args)
 
         -- then, create GIF
-        args = string.format("ffmpeg -v warning -ss %s -t %s -i '%s' -i '%s' -lavfi '%s [x]; [x][1:v] paletteuse' -y '%s'", position, duration, esc(input_file_path), esc(temp_palette_path), filters, esc(output_file_path))
+        args = string.format("ffmpeg -v warning -ss %s -t %s -i %s -i %s -lavfi %s -y %s", position, duration, wrap_param(esc(input_file_path)), wrap_param(esc(temp_palette_path)), wrap_param(filters .. "[x]; [x][1:v] paletteuse"), wrap_param(esc(output_file_path)))
         msg.info(args)
         os.execute(args)
     end

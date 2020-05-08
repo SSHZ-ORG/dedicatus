@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/SSHZ-ORG/dedicatus/config"
 	"golang.org/x/net/context"
@@ -34,15 +35,19 @@ func sendKGEntityQuery(ctx context.Context, query string) (map[string]interface{
 	return nil, nil
 }
 
+func getKGEntityID(result map[string]interface{}) string {
+	if result == nil {
+		return ""
+	}
+	return strings.TrimPrefix(result["@id"].(string), "kg:")
+}
+
 func tryFindKGEntityInternal(ctx context.Context, query string) (string, error) {
 	result, err := sendKGEntityQuery(ctx, query)
 	if err != nil {
 		return "", err
 	}
-	if result == nil {
-		return "", nil
-	}
-	return strings.TrimPrefix(result["@id"].(string), "kg:"), nil
+	return getKGEntityID(result), nil
 }
 
 func getKGMemcacheKey(query string) string {
@@ -83,16 +88,17 @@ func TryFindKGEntity(ctx context.Context, query string) string {
 	return result
 }
 
-func GetKGQueryResult(ctx context.Context, query string) (string, error) {
+// Returns (RawJSON, ID, JAName, error)
+func GetKGQueryResult(ctx context.Context, query string) (string, string, string, error) {
 	// This bypasses memcache
 	result, err := sendKGEntityQuery(ctx, query)
 	if err != nil {
-		return "", err
+		return "", "", "", err
 	}
 
 	cleanDetailedDescription(ctx, result)
 	encoded, err := json.MarshalIndent(result, "", "  ")
-	return string(encoded), err
+	return string(encoded), getKGEntityID(result), findJaName(ctx, result), err
 }
 
 // Remove the auto-translated versions of detailedDescription. Operates as side effect on input map.
@@ -113,4 +119,27 @@ func cleanDetailedDescription(ctx context.Context, result map[string]interface{}
 		o = append(o, m)
 	}
 	result["detailedDescription"] = o
+}
+
+func findJaName(ctx context.Context, result map[string]interface{}) string {
+	defer func() {
+		if v := recover(); v != nil {
+			// Some type assertion failed. Don't care, just log.
+			log.Warningf(ctx, "cleanDetailedDescription: %v", v)
+		}
+	}()
+
+	for _, i := range result["name"].([]interface{}) {
+		m := i.(map[string]interface{})
+		if m["@language"].(string) == "ja" {
+			name := m["@value"].(string)
+			return strings.Map(func(r rune) rune {
+				if unicode.IsSpace(r) {
+					return -1
+				}
+				return r
+			}, name)
+		}
+	}
+	return ""
 }

@@ -27,8 +27,17 @@ var commandMap = map[string]func(ctx context.Context, args []string, userID int)
 	"/u":     commandUpdatePersonalityNickname,
 	"/a":     commandEditAlias,
 	"/c":     commandManageContributors,
-	"/kg":    commandQueryKG,
 	"/stats": commandStats,
+}
+
+var complexCommandMap = map[string]func(ctx context.Context, bot *tgbotapi.BotAPI, args []string, message *tgbotapi.Message) error{
+	"/kg": commandQueryKG,
+}
+
+func makeReplyMessage(message *tgbotapi.Message, reply string) *tgbotapi.MessageConfig {
+	c := tgbotapi.NewMessage(message.Chat.ID, reply)
+	c.ReplyToMessageID = message.MessageID
+	return &c
 }
 
 func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
@@ -46,21 +55,20 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.Bo
 
 		if handler, ok := commandMap[args[0]]; ok {
 			replyMessage, err = handler(ctx, args, userID)
+		} else if handler, ok := complexCommandMap[args[0]]; ok {
+			err = handler(ctx, bot, args, message)
 		} else {
 			replyMessage = "Command not recognized."
 		}
 
 		if err != nil {
-			reply := tgbotapi.NewMessage(message.Chat.ID, "Your action triggered an internal server error.")
-			reply.ReplyToMessageID = message.MessageID
+			reply := makeReplyMessage(message, "Your action triggered an internal server error.")
 			_, _ = bot.Send(reply) // Fire and forget
 			return err
 		}
 
 		if replyMessage != "" {
-			reply := tgbotapi.NewMessage(message.Chat.ID, replyMessage)
-			reply.ReplyToMessageID = message.MessageID
-			_, err := bot.Send(reply)
+			_, err := bot.Send(makeReplyMessage(message, replyMessage))
 			return err
 		}
 	}
@@ -128,9 +136,7 @@ func handleAnimation(ctx context.Context, message *tgbotapi.Message, bot *tgbota
 	}
 
 	if len(replyMessages) > 0 {
-		reply := tgbotapi.NewMessage(message.Chat.ID, strings.Join(replyMessages, "\n"))
-		reply.ReplyToMessageID = message.MessageID
-		_, err := bot.Send(reply)
+		_, err := bot.Send(makeReplyMessage(message, strings.Join(replyMessages, "\n")))
 		return err
 	}
 	return nil
@@ -403,16 +409,37 @@ func commandManageContributors(ctx context.Context, args []string, userID int) (
 	return "Contributors updated", nil
 }
 
-func commandQueryKG(ctx context.Context, args []string, userID int) (string, error) {
+func commandQueryKG(ctx context.Context, bot *tgbotapi.BotAPI, args []string, message *tgbotapi.Message) error {
+	userId := message.From.ID
+
 	c := models.GetConfig(ctx)
-	if !c.IsAdmin(userID) {
-		return errorMessageNotAdmin, nil
+	if !c.IsAdmin(userId) {
+		_, err := bot.Send(makeReplyMessage(message, errorMessageNotAdmin))
+		return err
 	}
 
 	if len(args) != 2 {
-		return "Usage:\n/kg <Query>\nExample: /kg 井口裕香", nil
+		_, err := bot.Send(makeReplyMessage(message, "Usage:\n/kg <Query>\nExample: /kg 井口裕香"))
+		return err
 	}
-	return utils.GetKGQueryResult(ctx, args[1])
+
+	inputName := args[1]
+	encoded, id, name, err := utils.GetKGQueryResult(ctx, inputName)
+	if err != nil {
+		return err
+	}
+
+	reply := makeReplyMessage(message, "`"+encoded+"`")
+	reply.ParseMode = "markdown"
+	reply.DisableWebPagePreview = true
+	if inputName == name {
+		keyboard := tgbotapi.NewReplyKeyboard([]tgbotapi.KeyboardButton{tgbotapi.NewKeyboardButton(fmt.Sprintf("/n %s %s", name, id))})
+		keyboard.OneTimeKeyboard = true
+		keyboard.Selective = true
+		reply.ReplyMarkup = keyboard
+	}
+	_, err = bot.Send(reply)
+	return err
 }
 
 func commandStats(ctx context.Context, args []string, userID int) (string, error) {

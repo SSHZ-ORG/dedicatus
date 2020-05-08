@@ -102,5 +102,5 @@ func updateFileMetadataReadFileName(ctx context.Context, oldStorageKey string, i
 		return err
 	}
 
-	return OverrideFileName(ctx, i.FileUniqueID, m.Document.FileName)
+	return OverrideFileName(ctx, i.FileUniqueID, m.Animation.FileName)
 }

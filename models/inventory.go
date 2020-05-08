@@ -69,8 +69,8 @@ func GetInventory(ctx context.Context, fileUniqueID string) (*Inventory, error) 
 }
 
 // If not found, returns (nil, datastore.ErrNoSuchEntity)
-func TryGetInventoryByTgDocument(ctx context.Context, document *tgbotapi.Document) (*Inventory, error) {
-	i, err := GetInventory(ctx, document.FileUniqueID)
+func TryGetInventoryByTgAnimation(ctx context.Context, animation *tgbotapi.ChatAnimation) (*Inventory, error) {
+	i, err := GetInventory(ctx, animation.FileUniqueID)
 	if err == nil {
 		return i, nil
 	}
@@ -78,7 +78,7 @@ func TryGetInventoryByTgDocument(ctx context.Context, document *tgbotapi.Documen
 		return nil, err
 	}
 
-	return getInventoryByFile(ctx, document.FileID, document.FileSize)
+	return getInventoryByFile(ctx, animation.FileID, animation.FileSize)
 }
 
 // Matches the given file with known Inventories without using UniqueID. If not found returns (nil, datastore.ErrNoSuchEntity).

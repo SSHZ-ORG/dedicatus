@@ -33,8 +33,8 @@ var commandMap = map[string]func(ctx context.Context, args []string, userID int)
 
 func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	message := update.Message
-	if message.Document != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Document != nil) {
-		return handleDocument(ctx, message, bot)
+	if message.Animation != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Animation != nil) {
+		return handleAnimation(ctx, message, bot)
 	}
 
 	if strings.HasPrefix(message.Text, "/") {
@@ -68,24 +68,24 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.Bo
 	return nil
 }
 
-func handleDocument(ctx context.Context, message *tgbotapi.Message, bot *tgbotapi.BotAPI) error {
-	document := message.Document
+func handleAnimation(ctx context.Context, message *tgbotapi.Message, bot *tgbotapi.BotAPI) error {
+	animation := message.Animation
 	caption := message.Caption
 
-	if message.ReplyToMessage != nil && message.ReplyToMessage.Document != nil {
-		document = message.ReplyToMessage.Document
+	if message.ReplyToMessage != nil && message.ReplyToMessage.Animation != nil {
+		animation = message.ReplyToMessage.Animation
 		caption = message.Text
 	}
 
-	fileUniqueID := document.FileUniqueID
-	fileID := document.FileID
-	fileName := document.FileName
+	fileUniqueID := animation.FileUniqueID
+	fileID := animation.FileID
+	fileName := animation.FileName
 	replyMessages := []string{"Received:\n" + fileName + "\nUniqueID: " + fileUniqueID}
 
 	allowUpdate := true
 
 	// Match Inventory
-	i, err := models.TryGetInventoryByTgDocument(ctx, document)
+	i, err := models.TryGetInventoryByTgAnimation(ctx, animation)
 	if err != nil {
 		if err == models.ErrorHashConflict {
 			replyMessages = append(replyMessages, "Hash conflict!")
@@ -112,7 +112,7 @@ func handleDocument(ctx context.Context, message *tgbotapi.Message, bot *tgbotap
 	if allowUpdate {
 		if caption != "" {
 			// Update Inventory, if instructed
-			resp, err := handleDocumentCaption(ctx, fileUniqueID, fileID, fileName, caption, message.From.ID)
+			resp, err := handleAnimationCaption(ctx, fileUniqueID, fileID, fileName, caption, message.From.ID)
 			if err != nil {
 				return err
 			}
@@ -136,7 +136,7 @@ func handleDocument(ctx context.Context, message *tgbotapi.Message, bot *tgbotap
 	return nil
 }
 
-func handleDocumentCaption(ctx context.Context, fileUniqueID, fileID, fileName, caption string, userID int) (string, error) {
+func handleAnimationCaption(ctx context.Context, fileUniqueID, fileID, fileName, caption string, userID int) (string, error) {
 	c := models.GetConfig(ctx)
 	if !c.IsContributor(userID) {
 		return errorMessageNotContributor, nil

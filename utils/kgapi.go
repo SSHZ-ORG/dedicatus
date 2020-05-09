@@ -98,10 +98,10 @@ func GetKGQueryResult(ctx context.Context, query string) (string, string, string
 
 	cleanDetailedDescription(ctx, result)
 	encoded, err := json.MarshalIndent(result, "", "  ")
-	return string(encoded), getKGEntityID(result), findJaName(ctx, result), err
+	return string(encoded), getKGEntityID(result), findJAName(ctx, result), err
 }
 
-// Remove the auto-translated versions of detailedDescription. Operates as side effect on input map.
+// Remove the auto-translated versions of detailedDescription and remove license field. Operates as side effect on input map.
 func cleanDetailedDescription(ctx context.Context, result map[string]interface{}) {
 	defer func() {
 		if v := recover(); v != nil {
@@ -116,12 +116,13 @@ func cleanDetailedDescription(ctx context.Context, result map[string]interface{}
 		if m["inLanguage"].(string) != "en" && strings.HasPrefix(m["url"].(string), "https://en.wikipedia.org/") {
 			continue
 		}
+		delete(m, "license")
 		o = append(o, m)
 	}
 	result["detailedDescription"] = o
 }
 
-func findJaName(ctx context.Context, result map[string]interface{}) string {
+func findJAName(ctx context.Context, result map[string]interface{}) string {
 	defer func() {
 		if v := recover(); v != nil {
 			// Some type assertion failed. Don't care, just log.
@@ -133,6 +134,7 @@ func findJaName(ctx context.Context, result map[string]interface{}) string {
 		m := i.(map[string]interface{})
 		if m["@language"].(string) == "ja" {
 			name := m["@value"].(string)
+			// Remove all spaces in the name, as there sometimes is a space between surname and given name.
 			return strings.Map(func(r rune) rune {
 				if unicode.IsSpace(r) {
 					return -1

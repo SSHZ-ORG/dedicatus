@@ -37,6 +37,7 @@ var complexCommandMap = map[string]func(ctx context.Context, bot *tgbotapi.BotAP
 func makeReplyMessage(message *tgbotapi.Message, reply string) *tgbotapi.MessageConfig {
 	c := tgbotapi.NewMessage(message.Chat.ID, reply)
 	c.ReplyToMessageID = message.MessageID
+	c.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 	return &c
 }
 
@@ -429,8 +430,8 @@ func commandQueryKG(ctx context.Context, bot *tgbotapi.BotAPI, args []string, me
 		return err
 	}
 
-	reply := makeReplyMessage(message, "`"+encoded+"`")
-	reply.ParseMode = "markdown"
+	reply := makeReplyMessage(message, "```json\n"+encoded+"\n```")
+	reply.ParseMode = "MarkdownV2"
 	reply.DisableWebPagePreview = true
 	if inputName == name {
 		keyboard := tgbotapi.NewReplyKeyboard([]tgbotapi.KeyboardButton{tgbotapi.NewKeyboardButton(fmt.Sprintf("/n %s %s", name, id))})

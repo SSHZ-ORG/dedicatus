@@ -4,10 +4,10 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/SSHZ-ORG/dedicatus/models/cursor"
 	"github.com/SSHZ-ORG/dedicatus/models/sortmode"
 	"github.com/SSHZ-ORG/dedicatus/scheduler"
 	"github.com/SSHZ-ORG/dedicatus/scheduler/metadatamode"
@@ -168,7 +168,7 @@ func CreateOrUpdateInventory(ctx context.Context, fileID, fileUniqueID, fileName
 	return i, err
 }
 
-func FindInventories(ctx context.Context, personalities []*datastore.Key, sortMode sortmode.SortMode, lastCursor string) ([]*Inventory, string, error) {
+func FindInventories(ctx context.Context, personalities []*datastore.Key, sortMode sortmode.SortMode, lastCursor, queryID string) ([]*Inventory, string, error) {
 	q := datastore.NewQuery(inventoryEntityKind).KeysOnly()
 
 	for _, personality := range personalities {
@@ -188,15 +188,18 @@ func FindInventories(ctx context.Context, personalities []*datastore.Key, sortMo
 		// Not implemented. Let it use whatever natural ordering for now.
 	}
 
-	offset, err := strconv.Atoi(lastCursor)
-	if err == nil {
-		q = q.Offset(offset)
-	}
-
+	var offset int
+	q, offset = cursor.Offset(ctx, q, lastCursor)
 	q = q.Limit(maxItems)
 
-	keys, err := q.GetAll(ctx, nil)
-	if err != nil {
+	var keys []*datastore.Key
+	it := q.Run(ctx)
+	key, err := it.Next(nil)
+	for err == nil {
+		keys = append(keys, key)
+		key, err = it.Next(nil)
+	}
+	if err != datastore.Done {
 		return nil, "", err
 	}
 
@@ -212,7 +215,8 @@ func FindInventories(ctx context.Context, personalities []*datastore.Key, sortMo
 
 	newCursor := ""
 	if len(keys) == maxItems {
-		newCursor = strconv.Itoa(offset + maxItems)
+		c, _ := it.Cursor()
+		newCursor = cursor.Store(ctx, c, queryID, offset+maxItems)
 	}
 
 	return inventories, newCursor, nil

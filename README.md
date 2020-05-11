@@ -85,8 +85,7 @@ A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine
 * No good reason. `GetMulti()` is powered with memcache so should not be much slower.
 * We may want random drawing of results in the future. This can only be done with `KeysOnly()` + `GetMulti()`. 
 
-#### Why use Offset() in pagination?
+#### Why store Cursor for pagination locally instead of sending it?
 
-* Telegram `answerInlineQuery.next_offset` supports max 64 bytes. Datastore Cursor is 100% larger than that.
-* We don't want to store Cursor locally (even in memcache).
-* Most importantly: we don't care if some results are missing / duplicated.
+* Telegram `answerInlineQuery.next_offset` supports max 64 bytes.
+* Datastore Cursor is much larger than that.

@@ -46,14 +46,24 @@ func registerWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := tgapi.RegisterWebhook(ctx, bot)
-	if err != nil {
+	if _, err := tgapi.RegisterWebhook(ctx, bot); err != nil {
 		log.Errorf(ctx, "%v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	_, _ = w.Write(response.Result)
+	commands := tgbotapi.NewSetMyCommands(
+		tgbotapi.BotCommand{Command: "n", Description: "create a new Personality"},
+		tgbotapi.BotCommand{Command: "s", Description: "find existing Personalities"},
+		tgbotapi.BotCommand{Command: "u", Description: "edit Alias for Personalities"},
+		tgbotapi.BotCommand{Command: "kg", Description: "query Knowledge Graph"})
+	if _, err := bot.Request(commands); err != nil {
+		log.Errorf(ctx, "%v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_, _ = w.Write([]byte("OK"))
 }
 
 func updateFileMetadata(w http.ResponseWriter, r *http.Request) {

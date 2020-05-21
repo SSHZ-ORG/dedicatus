@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SSHZ-ORG/dedicatus/utils"
+	"github.com/SSHZ-ORG/dedicatus/kgapi"
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
@@ -100,7 +100,7 @@ func TryFindPersonalitiesWithKG(ctx context.Context, query string) ([]*datastore
 	}
 
 	// Let's ask Google
-	if KGID := utils.TryFindKGEntity(ctx, query); KGID != "" {
+	if KGID := kgapi.TryFindKGEntity(ctx, query); KGID != "" {
 		keys, err := datastore.NewQuery(personalityEntityKind).Filter("KGID = ", KGID).Limit(1).KeysOnly().GetAll(ctx, nil)
 		if len(keys) == 1 {
 			return keys, nil

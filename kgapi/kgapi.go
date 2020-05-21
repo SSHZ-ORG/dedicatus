@@ -1,4 +1,4 @@
-package utils
+package kgapi
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ import (
 	"google.golang.org/appengine/memcache"
 )
 
-const kgMemcacheKey = "KG1:"
+const kgMemcachePrefix = "D545:KG1:"
 
 // this returns the `result` node of the found entity.
 func sendKGEntityQuery(ctx context.Context, query string) (map[string]interface{}, error) {
@@ -51,7 +51,7 @@ func tryFindKGEntityInternal(ctx context.Context, query string) (string, error) 
 }
 
 func getKGMemcacheKey(query string) string {
-	return kgMemcacheKey + query
+	return kgMemcachePrefix + query
 }
 
 func getKGMemcache(ctx context.Context, query string) *string {

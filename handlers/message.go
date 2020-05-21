@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/SSHZ-ORG/dedicatus/kgapi"
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -425,7 +426,7 @@ func commandQueryKG(ctx context.Context, bot *tgbotapi.BotAPI, args []string, me
 	}
 
 	inputName := args[1]
-	encoded, id, name, err := utils.GetKGQueryResult(ctx, inputName)
+	encoded, id, name, err := kgapi.GetKGQueryResult(ctx, inputName)
 	if err != nil {
 		return err
 	}

@@ -391,19 +391,19 @@ func commandManageContributors(ctx context.Context, args []string, userID int) (
 		return "Illegal UserID.", nil
 	}
 
-	contributors := utils.NewIntSetFromSlice(c.Contributors)
 	switch args[1] {
 	case "add":
-		if !contributors.Add(newContributor) {
+		if c.IsContributor(newContributor) {
 			return "Is already a contributor.", nil
 		}
+		c.Contributors = append(c.Contributors, newContributor)
 	case "delete":
-		if !contributors.Remove(newContributor) {
+		if !c.IsContributor(newContributor) {
 			return "Is not a contributor.", nil
 		}
+		c.Contributors = utils.Remove(c.Contributors, newContributor)
 	}
 
-	c.Contributors = contributors.ToSlice()
 	if err = models.SetConfig(ctx, c); err != nil {
 		return "", err
 	}

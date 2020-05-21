@@ -21,7 +21,7 @@ func configKey(ctx context.Context) *datastore.Key {
 
 func GetConfig(ctx context.Context) Config {
 	c := Config{}
-	nds.Get(ctx, configKey(ctx), &c)
+	_ = nds.Get(ctx, configKey(ctx), &c)
 	return c
 }
 
@@ -33,17 +33,15 @@ func SetConfig(ctx context.Context, c Config) error {
 func CreateConfig(ctx context.Context) error {
 	c := GetConfig(ctx)
 
-	admins := utils.NewIntSetFromSlice(c.Admins)
-	admins.Add(config.InitAdminID)
+	if !c.IsAdmin(config.InitAdminID) {
+		c.Admins = append(c.Admins, config.InitAdminID)
+	}
 
-	contributors := utils.NewIntSetFromSlice(c.Contributors)
-	contributors.Add(config.InitAdminID)
+	if !c.IsContributor(config.InitAdminID) {
+		c.Contributors = append(c.Contributors, config.InitAdminID)
+	}
 
-	c.Admins = admins.ToSlice()
-	c.Contributors = contributors.ToSlice()
-
-	_, err := nds.Put(ctx, configKey(ctx), &c)
-	return err
+	return SetConfig(ctx, c)
 }
 
 func (c Config) IsAdmin(userID int) bool {

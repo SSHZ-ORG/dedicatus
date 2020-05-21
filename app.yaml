@@ -13,3 +13,4 @@ handlers:
 automatic_scaling:
   max_concurrent_requests: 80
   min_instances: 1
+  max_instances: 1

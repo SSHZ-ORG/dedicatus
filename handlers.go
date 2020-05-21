@@ -24,6 +24,7 @@ func main() {
 	r.HandleFunc(paths.RegisterWebhook, registerWebhook)
 	r.HandleFunc(paths.UpdateFileMetadata, updateFileMetadata)
 	r.HandleFunc(paths.QueueUpdateFileMetadata, queueUpdateFileMetadata)
+	r.HandleFunc(paths.RotateReservoir, rotateReservoir)
 
 	http.Handle("/", r)
 	appengine.Main()
@@ -100,6 +101,17 @@ func queueUpdateFileMetadata(w http.ResponseWriter, r *http.Request) {
 	err = scheduler.ScheduleUpdateFileMetadata(ctx, ids, mode)
 	if err != nil {
 		log.Errorf(ctx, "scheduler.ScheduleUpdateFileMetadata: %+v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func rotateReservoir(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+
+	err := models.RotateReservoir(ctx)
+	if err != nil {
+		log.Errorf(ctx, "models.RotateReservoir: %+v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -88,5 +88,6 @@ func prepareResponse(ctx context.Context, query *tgbotapi.InlineQuery) (*tgbotap
 		InlineQueryID: query.ID,
 		Results:       constructInlineResults(inventories),
 		NextOffset:    nextCursor,
+		CacheTime:     120,
 	}, nil
 }

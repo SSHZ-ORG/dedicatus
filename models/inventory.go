@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/SSHZ-ORG/dedicatus/models/cursor"
+	"github.com/SSHZ-ORG/dedicatus/models/reservoir"
 	"github.com/SSHZ-ORG/dedicatus/models/sortmode"
 	"github.com/SSHZ-ORG/dedicatus/scheduler"
 	"github.com/SSHZ-ORG/dedicatus/scheduler/metadatamode"
@@ -185,6 +186,21 @@ func FindInventories(ctx context.Context, personalities []*datastore.Key, sortMo
 	case sortmode.LastUsedAsc:
 		q = q.Order("LastUsed")
 	case sortmode.RandomDraw:
+		if len(personalities) == 0 {
+			// Global random. Use reservoir.
+			keys, err := reservoir.ReadReservoir(ctx, maxItems)
+			if err != nil {
+				return nil, "", err
+			}
+
+			inventories := make([]*Inventory, len(keys))
+			err = nds.GetMulti(ctx, keys, inventories)
+			if err != nil {
+				return nil, "", err
+			}
+
+			return inventories, "", nil
+		}
 		// Not implemented. Let it use whatever natural ordering for now.
 	}
 
@@ -222,8 +238,13 @@ func FindInventories(ctx context.Context, personalities []*datastore.Key, sortMo
 	return inventories, newCursor, nil
 }
 
+func allInventories(ctx context.Context) ([]*datastore.Key, error) {
+	return datastore.NewQuery(inventoryEntityKind).KeysOnly().GetAll(ctx, nil)
+
+}
+
 func AllInventoriesStorageKeys(ctx context.Context) ([]string, error) {
-	keys, err := datastore.NewQuery(inventoryEntityKind).KeysOnly().GetAll(ctx, nil)
+	keys, err := allInventories(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -301,4 +322,16 @@ func OverrideFileName(ctx context.Context, fileUniqueID, fileName string) error 
 		_, err := nds.Put(ctx, key, i)
 		return err
 	}, &datastore.TransactionOptions{})
+}
+
+func RotateReservoir(ctx context.Context) error {
+	if reservoir.TryRotateReservoir(ctx, maxItems) {
+		return nil
+	}
+
+	keys, err := allInventories(ctx)
+	if err != nil {
+		return err
+	}
+	return reservoir.RefillReservoir(ctx, keys)
 }

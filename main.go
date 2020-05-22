@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/SSHZ-ORG/dedicatus/config"
 	"github.com/SSHZ-ORG/dedicatus/handlers"
@@ -19,6 +21,8 @@ import (
 )
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+
 	r := mux.NewRouter()
 	r.HandleFunc(tgapi.TgWebhookPath(config.TgToken), webhook)
 	r.HandleFunc(paths.RegisterWebhook, registerWebhook)

@@ -94,6 +94,12 @@ func handleAnimation(ctx context.Context, message *tgbotapi.Message, bot *tgbota
 
 	allowUpdate := true
 
+	// Check MimeType
+	if animation.MimeType != "video/mp4" {
+		replyMessages = append(replyMessages, fmt.Sprintf("Unexpected file type %s, disallowing update.", animation.MimeType))
+		allowUpdate = false
+	}
+
 	// Match Inventory
 	i, err := models.TryGetInventoryByTgAnimation(ctx, animation)
 	if err != nil {

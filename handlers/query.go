@@ -10,7 +10,6 @@ import (
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/log"
 )
 
 func constructInlineResults(inventories []*models.Inventory) []interface{} {
@@ -26,8 +25,6 @@ func HandleInlineQuery(ctx context.Context, update tgbotapi.Update, bot *tgbotap
 	if err != nil {
 		return err
 	}
-
-	log.Debugf(ctx, "AnswerInlineQuery: %+v", *response)
 
 	_, err = bot.Request(response)
 	return err

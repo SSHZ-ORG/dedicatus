@@ -53,6 +53,9 @@ func RefillReservoir(ctx context.Context, keys []*datastore.Key) error {
 
 func ReadReservoir(ctx context.Context, limit int) ([]*datastore.Key, error) {
 	i, err := memcache.Get(ctx, memcacheKey)
+	if err == memcache.ErrCacheMiss {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}

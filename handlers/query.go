@@ -76,7 +76,7 @@ func prepareResponse(ctx context.Context, query *tgbotapi.InlineQuery) (*tgbotap
 		flattenKeys = append(flattenKeys, pKeys[i]...)
 	}
 
-	inventories, nextCursor, err := models.FindInventories(ctx, flattenKeys, queryMode, query.Offset, query.ID)
+	inventories, nextCursor, err := models.QueryInventories(ctx, flattenKeys, queryMode, query.Offset, query.ID)
 	if err != nil {
 		return nil, err
 	}

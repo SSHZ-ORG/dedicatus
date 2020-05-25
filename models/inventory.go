@@ -169,7 +169,7 @@ func CreateOrUpdateInventory(ctx context.Context, fileID, fileUniqueID, fileName
 	return i, err
 }
 
-func FindInventories(ctx context.Context, personalities []*datastore.Key, sortMode sortmode.SortMode, lastCursor, queryID string) ([]*Inventory, string, error) {
+func queryInventoryKeys(ctx context.Context, personalities []*datastore.Key, sortMode sortmode.SortMode, lastCursor, queryID string) ([]*datastore.Key, string, error) {
 	q := datastore.NewQuery(inventoryEntityKind).KeysOnly()
 
 	for _, personality := range personalities {
@@ -189,17 +189,7 @@ func FindInventories(ctx context.Context, personalities []*datastore.Key, sortMo
 		if len(personalities) == 0 {
 			// Global random. Use reservoir.
 			keys, err := reservoir.ReadReservoir(ctx, maxItems)
-			if err != nil {
-				return nil, "", err
-			}
-
-			inventories := make([]*Inventory, len(keys))
-			err = nds.GetMulti(ctx, keys, inventories)
-			if err != nil {
-				return nil, "", err
-			}
-
-			return inventories, "", nil
+			return keys, "", err
 		}
 		// Not implemented. Let it use whatever natural ordering for now.
 	}
@@ -223,19 +213,34 @@ func FindInventories(ctx context.Context, personalities []*datastore.Key, sortMo
 		return nil, "", nil
 	}
 
-	inventories := make([]*Inventory, len(keys))
-	err = nds.GetMulti(ctx, keys, inventories)
-	if err != nil {
-		return nil, "", err
-	}
-
 	newCursor := ""
 	if len(keys) == maxItems {
 		c, _ := it.Cursor()
 		newCursor = cursor.Store(ctx, c, queryID, offset+maxItems)
 	}
 
-	return inventories, newCursor, nil
+	return keys, newCursor, nil
+}
+
+func QueryInventories(ctx context.Context, personalities []*datastore.Key, sortMode sortmode.SortMode, lastCursor, queryID string) ([]*Inventory, string, error) {
+	keys, newCursor, err := queryInventoryKeys(ctx, personalities, sortMode, lastCursor, queryID)
+
+	g := make([]*Inventory, len(keys))
+	err = nds.GetMulti(ctx, keys, g)
+	if err != nil {
+		if tryFlattenDatastoreNoSuchEntityMultiError(err) != datastore.ErrNoSuchEntity {
+			return nil, "", err
+		}
+	}
+
+	var is []*Inventory
+	for _, i := range g {
+		if i != nil {
+			is = append(is, i)
+		}
+	}
+
+	return is, newCursor, nil
 }
 
 func allInventories(ctx context.Context) ([]*datastore.Key, error) {

@@ -47,6 +47,9 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.Bo
 	if message.Animation != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Animation != nil) {
 		return handleAnimation(ctx, message, bot)
 	}
+	if message.Video != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Video != nil) {
+		return handleVideo(ctx, message, bot)
+	}
 
 	if strings.HasPrefix(message.Text, "/") {
 		replyMessage := ""
@@ -80,28 +83,42 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.Bo
 
 func handleAnimation(ctx context.Context, message *tgbotapi.Message, bot *tgbotapi.BotAPI) error {
 	animation := message.Animation
-	caption := message.Caption
-
 	if message.ReplyToMessage != nil && message.ReplyToMessage.Animation != nil {
 		animation = message.ReplyToMessage.Animation
+	}
+
+	tgFile := utils.TGFileFromChatAnimation(animation)
+	return handleTGFile(ctx, message, tgFile, bot)
+}
+
+func handleVideo(ctx context.Context, message *tgbotapi.Message, bot *tgbotapi.BotAPI) error {
+	video := message.Video
+	if message.ReplyToMessage != nil && message.ReplyToMessage.Video != nil {
+		video = message.ReplyToMessage.Video
+	}
+
+	tgFile := utils.TGFileFromVideo(video)
+	return handleTGFile(ctx, message, tgFile, bot)
+}
+
+func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *utils.TGFile, bot *tgbotapi.BotAPI) error {
+	caption := message.Caption
+	if message.ReplyToMessage != nil {
 		caption = message.Text
 	}
 
-	fileUniqueID := animation.FileUniqueID
-	fileID := animation.FileID
-	fileName := animation.FileName
-	replyMessages := []string{"Received:\n" + fileName + "\nUniqueID: " + fileUniqueID}
+	replyMessages := []string{"Received:\n" + tgFile.FileName + "\nUniqueID: " + tgFile.FileUniqueID}
 
 	allowUpdate := true
 
-	// Check MimeType
-	if animation.MimeType != "video/mp4" {
-		replyMessages = append(replyMessages, fmt.Sprintf("Unexpected file type %s, disallowing update.", animation.MimeType))
+	// Check MimeType. Both MPEG4_GIF and Video have to be video/mp4 for now.
+	if tgFile.MimeType != "video/mp4" {
+		replyMessages = append(replyMessages, fmt.Sprintf("Unexpected file type %s, disallowing update.", tgFile.MimeType))
 		allowUpdate = false
 	}
 
 	// Match Inventory
-	i, err := models.TryGetInventoryByTgAnimation(ctx, animation)
+	i, err := models.TryGetInventoryByTgFile(ctx, tgFile)
 	if err != nil {
 		if err == models.ErrorHashConflict {
 			replyMessages = append(replyMessages, "Hash conflict!")
@@ -112,8 +129,9 @@ func handleAnimation(ctx context.Context, message *tgbotapi.Message, bot *tgbota
 	}
 
 	if i != nil {
-		fileUniqueID = i.FileUniqueID
-		fileID = i.FileID
+		// It matched to some existing Inventory, pretend that we received the existing one.
+		tgFile.FileUniqueID = i.FileUniqueID
+		tgFile.FileID = i.FileID
 
 		s, err := i.ToString(ctx)
 		if err != nil {
@@ -128,15 +146,15 @@ func handleAnimation(ctx context.Context, message *tgbotapi.Message, bot *tgbota
 	if allowUpdate {
 		if caption != "" {
 			// Update Inventory, if instructed
-			resp, err := handleAnimationCaption(ctx, fileUniqueID, fileID, fileName, caption, message.From.ID)
+			resp, err := handleTGFileCaption(ctx, tgFile, caption, message.From.ID)
 			if err != nil {
 				return err
 			}
 			replyMessages = append(replyMessages, "\n"+resp)
 		} else {
-			if i != nil && i.FileName == "" {
-				// Existing Inventory but we don't know FileName. Backfill the field.
-				if err := models.OverrideFileName(ctx, fileUniqueID, fileName); err != nil {
+			if i != nil && i.FileName == "" && tgFile.FileName != "" {
+				// Existing Inventory but we don't know FileName, and we know FileName now. Backfill the field.
+				if err := models.OverrideFileName(ctx, i.FileUniqueID, tgFile.FileName); err != nil {
 					return err
 				}
 			}
@@ -150,7 +168,7 @@ func handleAnimation(ctx context.Context, message *tgbotapi.Message, bot *tgbota
 	return nil
 }
 
-func handleAnimationCaption(ctx context.Context, fileUniqueID, fileID, fileName, caption string, userID int) (string, error) {
+func handleTGFileCaption(ctx context.Context, tgFile *utils.TGFile, caption string, userID int) (string, error) {
 	c := models.GetConfig(ctx)
 	if !c.IsContributor(userID) {
 		return errorMessageNotContributor, nil
@@ -169,7 +187,7 @@ func handleAnimationCaption(ctx context.Context, fileUniqueID, fileID, fileName,
 		}
 
 		oldFileUniqueID := args[1]
-		i, err := models.ReplaceFileID(ctx, oldFileUniqueID, fileID, fileUniqueID, fileName)
+		i, err := models.ReplaceFileID(ctx, oldFileUniqueID, tgFile)
 		if err != nil {
 			if err == datastore.ErrNoSuchEntity {
 				return "Old Inventory not found", nil
@@ -197,7 +215,7 @@ func handleAnimationCaption(ctx context.Context, fileUniqueID, fileID, fileName,
 		personalityKeys = append(personalityKeys, key)
 	}
 
-	i, err := models.CreateOrUpdateInventory(ctx, fileID, fileUniqueID, fileName, personalityKeys, userID, c)
+	i, err := models.CreateOrUpdateInventory(ctx, tgFile, personalityKeys, userID, c)
 	if err != nil {
 		if err == models.ErrorOnlyAdminCanUpdateInventory {
 			return "This GIF is already known. Only admins or its creator can modify it now.", nil

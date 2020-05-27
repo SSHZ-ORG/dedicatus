@@ -14,7 +14,6 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/scheduler/metadatamode"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
-	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
@@ -70,8 +69,8 @@ func GetInventory(ctx context.Context, fileUniqueID string) (*Inventory, error) 
 }
 
 // If not found, returns (nil, datastore.ErrNoSuchEntity)
-func TryGetInventoryByTgAnimation(ctx context.Context, animation *tgbotapi.ChatAnimation) (*Inventory, error) {
-	i, err := GetInventory(ctx, animation.FileUniqueID)
+func TryGetInventoryByTgFile(ctx context.Context, tgFile *utils.TGFile) (*Inventory, error) {
+	i, err := GetInventory(ctx, tgFile.FileUniqueID)
 	if err == nil {
 		return i, nil
 	}
@@ -79,7 +78,7 @@ func TryGetInventoryByTgAnimation(ctx context.Context, animation *tgbotapi.ChatA
 		return nil, err
 	}
 
-	return getInventoryByFile(ctx, animation.FileID, animation.FileSize)
+	return getInventoryByFile(ctx, tgFile.FileID, tgFile.FileSize)
 }
 
 // Matches the given file with known Inventories without using UniqueID. If not found returns (nil, datastore.ErrNoSuchEntity).
@@ -120,11 +119,11 @@ func getInventoryByMD5(ctx context.Context, sum []byte) (*Inventory, error) {
 	return i, err
 }
 
-func CreateOrUpdateInventory(ctx context.Context, fileID, fileUniqueID, fileName string, personality []*datastore.Key, userID int, config Config) (*Inventory, error) {
+func CreateOrUpdateInventory(ctx context.Context, tgFile *utils.TGFile, personality []*datastore.Key, userID int, config Config) (*Inventory, error) {
 	i := new(Inventory)
 
 	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {
-		key := inventoryKey(ctx, fileUniqueID)
+		key := inventoryKey(ctx, tgFile.FileUniqueID)
 		err := nds.Get(ctx, key, i)
 
 		// This is an existing Inventory, only admins or original creator can update it.
@@ -135,15 +134,15 @@ func CreateOrUpdateInventory(ctx context.Context, fileID, fileUniqueID, fileName
 			return err
 		}
 
-		i.FileID = fileID
-		i.FileUniqueID = fileUniqueID
+		i.FileID = tgFile.FileID
+		i.FileUniqueID = tgFile.FileUniqueID
 
 		// For existing Inventory that we know the name, don't override.
 		if i.FileName == "" {
-			i.FileName = fileName
+			i.FileName = tgFile.FileName
 		}
 
-		i.FileType = utils.FileTypeMPEG4GIF
+		i.FileType = tgFile.FileType
 		i.Personality = personality
 		i.LastUsed = time.Now()
 
@@ -159,7 +158,7 @@ func CreateOrUpdateInventory(ctx context.Context, fileID, fileUniqueID, fileName
 
 		if shouldScheduleMetadataUpdate {
 			// New File. Schedule metadata update.
-			if err := scheduler.ScheduleUpdateFileMetadata(ctx, []string{fileUniqueID}, metadatamode.Default); err != nil {
+			if err := scheduler.ScheduleUpdateFileMetadata(ctx, []string{tgFile.FileUniqueID}, metadatamode.Default); err != nil {
 				return err
 			}
 		}
@@ -284,7 +283,7 @@ func CountInventories(ctx context.Context, personality *datastore.Key) (int, err
 	return datastore.NewQuery(inventoryEntityKind).KeysOnly().Filter("Personality = ", personality).Count(ctx)
 }
 
-func ReplaceFileID(ctx context.Context, oldFileUniqueID, newFileID, newFileUniqueID, newFileName string) (*Inventory, error) {
+func ReplaceFileID(ctx context.Context, oldFileUniqueID string, newFile *utils.TGFile) (*Inventory, error) {
 	i := new(Inventory)
 
 	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {
@@ -293,9 +292,10 @@ func ReplaceFileID(ctx context.Context, oldFileUniqueID, newFileID, newFileUniqu
 			return err
 		}
 
-		i.FileID = newFileID
-		i.FileUniqueID = newFileUniqueID
-		i.FileName = newFileName
+		i.FileID = newFile.FileID
+		i.FileUniqueID = newFile.FileUniqueID
+		i.FileName = newFile.FileName
+		i.FileType = newFile.FileType
 
 		i.MD5Sum = nil
 		i.FileSize = 0
@@ -303,11 +303,11 @@ func ReplaceFileID(ctx context.Context, oldFileUniqueID, newFileID, newFileUniqu
 		if err := nds.Delete(ctx, oldKey); err != nil {
 			return err
 		}
-		if _, err := nds.Put(ctx, inventoryKey(ctx, newFileUniqueID), i); err != nil {
+		if _, err := nds.Put(ctx, inventoryKey(ctx, newFile.FileUniqueID), i); err != nil {
 			return err
 		}
 
-		return scheduler.ScheduleUpdateFileMetadata(ctx, []string{newFileUniqueID}, metadatamode.Default)
+		return scheduler.ScheduleUpdateFileMetadata(ctx, []string{newFile.FileUniqueID}, metadatamode.Default)
 	}, &datastore.TransactionOptions{XG: true})
 
 	return i, err

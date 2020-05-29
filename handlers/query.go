@@ -6,7 +6,7 @@ import (
 
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/models/sortmode"
-	"github.com/SSHZ-ORG/dedicatus/utils"
+	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
@@ -15,7 +15,7 @@ import (
 func constructInlineResults(inventories []*models.Inventory) []interface{} {
 	var results []interface{}
 	for _, i := range inventories {
-		results = append(results, utils.MakeInlineQueryResult(i.FileUniqueID, i.FileID, i.FileType))
+		results = append(results, tgapi.MakeInlineQueryResult(i.FileUniqueID, i.FileID, i.FileType))
 	}
 	return results
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/scheduler"
 	"github.com/SSHZ-ORG/dedicatus/scheduler/metadatamode"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
-	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
@@ -69,7 +68,7 @@ func GetInventory(ctx context.Context, fileUniqueID string) (*Inventory, error) 
 }
 
 // If not found, returns (nil, datastore.ErrNoSuchEntity)
-func TryGetInventoryByTgFile(ctx context.Context, tgFile *utils.TGFile) (*Inventory, error) {
+func TryGetInventoryByTgFile(ctx context.Context, tgFile *tgapi.TGFile) (*Inventory, error) {
 	i, err := GetInventory(ctx, tgFile.FileUniqueID)
 	if err == nil {
 		return i, nil
@@ -119,7 +118,7 @@ func getInventoryByMD5(ctx context.Context, sum []byte) (*Inventory, error) {
 	return i, err
 }
 
-func CreateOrUpdateInventory(ctx context.Context, tgFile *utils.TGFile, personality []*datastore.Key, userID int, config Config) (*Inventory, error) {
+func CreateOrUpdateInventory(ctx context.Context, tgFile *tgapi.TGFile, personality []*datastore.Key, userID int, config Config) (*Inventory, error) {
 	i := new(Inventory)
 
 	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {
@@ -242,13 +241,8 @@ func QueryInventories(ctx context.Context, personalities []*datastore.Key, sortM
 	return is, newCursor, nil
 }
 
-func allInventories(ctx context.Context) ([]*datastore.Key, error) {
-	return datastore.NewQuery(inventoryEntityKind).KeysOnly().GetAll(ctx, nil)
-
-}
-
 func AllInventoriesStorageKeys(ctx context.Context) ([]string, error) {
-	keys, err := allInventories(ctx)
+	keys, err := datastore.NewQuery(inventoryEntityKind).KeysOnly().GetAll(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +277,7 @@ func CountInventories(ctx context.Context, personality *datastore.Key) (int, err
 	return datastore.NewQuery(inventoryEntityKind).KeysOnly().Filter("Personality = ", personality).Count(ctx)
 }
 
-func ReplaceFileID(ctx context.Context, oldFileUniqueID string, newFile *utils.TGFile) (*Inventory, error) {
+func ReplaceFileID(ctx context.Context, oldFileUniqueID string, newFile *tgapi.TGFile) (*Inventory, error) {
 	i := new(Inventory)
 
 	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {
@@ -334,7 +328,7 @@ func RotateReservoir(ctx context.Context) error {
 		return nil
 	}
 
-	keys, err := allInventories(ctx)
+	keys, err := datastore.NewQuery(inventoryEntityKind).KeysOnly().Filter("FileType =", tgapi.FileTypeMPEG4GIF).GetAll(ctx, nil)
 	if err != nil {
 		return err
 	}

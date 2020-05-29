@@ -8,6 +8,7 @@ import (
 
 	"github.com/SSHZ-ORG/dedicatus/kgapi"
 	"github.com/SSHZ-ORG/dedicatus/models"
+	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/net/context"
@@ -87,7 +88,7 @@ func handleAnimation(ctx context.Context, message *tgbotapi.Message, bot *tgbota
 		animation = message.ReplyToMessage.Animation
 	}
 
-	tgFile := utils.TGFileFromChatAnimation(animation)
+	tgFile := tgapi.TGFileFromChatAnimation(animation)
 	return handleTGFile(ctx, message, tgFile, bot)
 }
 
@@ -97,11 +98,11 @@ func handleVideo(ctx context.Context, message *tgbotapi.Message, bot *tgbotapi.B
 		video = message.ReplyToMessage.Video
 	}
 
-	tgFile := utils.TGFileFromVideo(video)
+	tgFile := tgapi.TGFileFromVideo(video)
 	return handleTGFile(ctx, message, tgFile, bot)
 }
 
-func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *utils.TGFile, bot *tgbotapi.BotAPI) error {
+func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *tgapi.TGFile, bot *tgbotapi.BotAPI) error {
 	caption := message.Caption
 	if message.ReplyToMessage != nil {
 		caption = message.Text
@@ -168,7 +169,7 @@ func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *utils.
 	return nil
 }
 
-func handleTGFileCaption(ctx context.Context, tgFile *utils.TGFile, caption string, userID int) (string, error) {
+func handleTGFileCaption(ctx context.Context, tgFile *tgapi.TGFile, caption string, userID int) (string, error) {
 	c := models.GetConfig(ctx)
 	if !c.IsContributor(userID) {
 		return errorMessageNotContributor, nil

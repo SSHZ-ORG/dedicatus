@@ -9,11 +9,14 @@ import (
 	"google.golang.org/appengine/memcache"
 )
 
-const memcacheKey = "D545:IR2"
+const (
+	memcacheKey   = "D545:IR3"
+	supportedKind = "Inventory"
+)
 
 var separator = []byte(":")
 
-// We don't use Gob here because Gob wastes space for things like field names in Go struct.
+// We don't use Gob or Key.encode here because they waste space for things like field names in Go struct.
 
 func TryRotateReservoir(ctx context.Context, limit int) bool {
 	i, err := memcache.Get(ctx, memcacheKey)
@@ -42,7 +45,13 @@ func RefillReservoir(ctx context.Context, keys []*datastore.Key) error {
 
 	var bs [][]byte
 	for _, k := range keys {
-		bs = append(bs, []byte(k.Encode()))
+		if k.Kind() != supportedKind {
+			panic("Unsupported entity kind " + k.Kind())
+		}
+		if k.StringID() == "" {
+			panic("Illegal StringID " + k.String())
+		}
+		bs = append(bs, []byte(k.StringID()))
 	}
 
 	return memcache.Set(ctx, &memcache.Item{
@@ -62,10 +71,7 @@ func ReadReservoir(ctx context.Context, limit int) ([]*datastore.Key, error) {
 
 	var keys []*datastore.Key
 	for _, b := range bytes.SplitN(i.Value, separator, limit+1)[:limit] {
-		key, err := datastore.DecodeKey(string(b))
-		if err != nil {
-			return nil, err
-		}
+		key := datastore.NewKey(ctx, supportedKind, string(b), 0, nil)
 		keys = append(keys, key)
 	}
 

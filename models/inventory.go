@@ -176,9 +176,9 @@ func queryInventoryKeys(ctx context.Context, personalities []*datastore.Key, sor
 
 	switch sortMode {
 	case sortmode.UsageCountDesc:
-		q = q.Order("-UsageCount")
+		q = q.Order("-UsageCount").Order("-LastUsed")
 	case sortmode.UsageCountAsc:
-		q = q.Order("UsageCount")
+		q = q.Order("UsageCount").Order("LastUsed")
 	case sortmode.LastUsedDesc:
 		q = q.Order("-LastUsed")
 	case sortmode.LastUsedAsc:

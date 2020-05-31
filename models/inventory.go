@@ -222,6 +222,9 @@ func queryInventoryKeys(ctx context.Context, personalities []*datastore.Key, sor
 
 func QueryInventories(ctx context.Context, personalities []*datastore.Key, sortMode sortmode.SortMode, lastCursor, queryID string) ([]*Inventory, string, error) {
 	keys, newCursor, err := queryInventoryKeys(ctx, personalities, sortMode, lastCursor, queryID)
+	if err != nil {
+		return nil, "", err
+	}
 
 	g := make([]*Inventory, len(keys))
 	err = nds.GetMulti(ctx, keys, g)

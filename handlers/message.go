@@ -33,7 +33,8 @@ var commandMap = map[string]func(ctx context.Context, args []string, userID int)
 }
 
 var complexCommandMap = map[string]func(ctx context.Context, bot *tgbotapi.BotAPI, args []string, message *tgbotapi.Message) error{
-	"/kg": commandQueryKG,
+	"/kg":     commandQueryKG,
+	"/sendme": commandSendMe,
 }
 
 func makeReplyMessage(message *tgbotapi.Message, reply string) *tgbotapi.MessageConfig {
@@ -503,4 +504,28 @@ func commandStats(ctx context.Context, args []string, userID int) (string, error
 
 	wg.Wait()
 	return strings.Join(rs, "\n"), nil
+}
+
+func commandSendMe(ctx context.Context, bot *tgbotapi.BotAPI, args []string, message *tgbotapi.Message) error {
+	if len(args) != 2 {
+		_, err := bot.Send(makeReplyMessage(message, "Usage:\n/sendme <FileUniqueID>"))
+		return err
+	}
+
+	i, err := models.GetInventory(ctx, args[1])
+	if err != nil {
+		if err == datastore.ErrNoSuchEntity {
+			_, err := bot.Send(makeReplyMessage(message, "Unknown inventory"))
+			return err
+		}
+		return err
+	}
+
+	c, err := i.ToString(ctx)
+	if err != nil {
+		return err
+	}
+	f := tgapi.MakeFileable(message.Chat.ID, i.FileID, i.FileType, c)
+	_, err = bot.Send(f)
+	return err
 }

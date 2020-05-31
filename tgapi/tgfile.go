@@ -48,3 +48,17 @@ func MakeInlineQueryResult(uniqueID, fileID, fileType string) interface{} {
 	}
 	return nil
 }
+
+func MakeFileable(chatID int64, fileID, fileType, caption string) tgbotapi.Fileable {
+	switch fileType {
+	case FileTypeMPEG4GIF:
+		share := tgbotapi.NewAnimationShare(chatID, fileID)
+		share.Caption = caption
+		return share
+	case FileTypeVideo:
+		share := tgbotapi.NewVideoShare(chatID, fileID)
+		share.Caption = caption
+		return share
+	}
+	return nil
+}

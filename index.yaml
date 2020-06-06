@@ -3,17 +3,6 @@ indexes:
   - kind: Inventory
     properties:
       - name: Personality
-      - name: UsageCount
-
-  - kind: Inventory
-    properties:
-      - name: Personality
-      - name: UsageCount
-        direction: desc
-
-  - kind: Inventory
-    properties:
-      - name: Personality
       - name: LastUsed
 
   - kind: Inventory

@@ -95,6 +95,9 @@ func GetKGQueryResult(ctx context.Context, query string) (string, string, string
 	if err != nil {
 		return "", "", "", err
 	}
+	if result == nil {
+		return "null", "", "", nil
+	}
 
 	cleanDetailedDescription(ctx, result)
 	encoded, err := json.MarshalIndent(result, "", "  ")
@@ -126,7 +129,7 @@ func findJAName(ctx context.Context, result map[string]interface{}) string {
 	defer func() {
 		if v := recover(); v != nil {
 			// Some type assertion failed. Don't care, just log.
-			log.Warningf(ctx, "cleanDetailedDescription: %v", v)
+			log.Warningf(ctx, "findJAName: %v", v)
 		}
 	}()
 

@@ -56,6 +56,15 @@ func (i Inventory) ToString(ctx context.Context) (string, error) {
 	return fmt.Sprintf("%s\nUniqueID: %s\n%x (%d bytes)\n[%s]", i.FileName, i.FileUniqueID, i.MD5Sum, i.FileSize, strings.Join(pns, ", ")), nil
 }
 
+func (i Inventory) SendToChat(ctx context.Context, chatID int64) error {
+	caption, err := i.ToString(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = tgapi.NewTgBotNoCheck(ctx).Send(tgapi.MakeFileable(chatID, i.FileID, i.FileType, caption))
+	return err
+}
+
 func inventoryKey(ctx context.Context, fileUniqueID string) *datastore.Key {
 	return datastore.NewKey(ctx, inventoryEntityKind, fileUniqueID, 0, nil)
 }

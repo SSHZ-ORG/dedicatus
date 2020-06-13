@@ -62,7 +62,7 @@ func updateFileMetadataDefault(ctx context.Context, oldStorageKey string, i *Inv
 	sum := md5.Sum(b)
 	log.Infof(ctx, "File %s: %x (%d bytes)", fileUniqueID, sum, file.FileSize)
 
-	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
+	err = nds.RunInTransaction(ctx, func(ctx context.Context) error {
 		// Get again so we don't race.
 		if err := nds.Get(ctx, oldKey, i); err != nil {
 			if err == datastore.ErrNoSuchEntity {
@@ -85,6 +85,14 @@ func updateFileMetadataDefault(ctx context.Context, oldStorageKey string, i *Inv
 		_, err := nds.Put(ctx, inventoryKey(ctx, i.FileUniqueID), i)
 		return err
 	}, &datastore.TransactionOptions{XG: true})
+	if err != nil {
+		return err
+	}
+
+	if config.ChannelID != 0 {
+		_ = i.SendToChat(ctx, config.ChannelID)
+	}
+	return nil
 }
 
 func updateFileMetadataReadFileName(ctx context.Context, oldStorageKey string, i *Inventory) error {

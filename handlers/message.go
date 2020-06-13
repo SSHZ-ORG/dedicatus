@@ -521,11 +521,5 @@ func commandSendMe(ctx context.Context, bot *tgbotapi.BotAPI, args []string, mes
 		return err
 	}
 
-	c, err := i.ToString(ctx)
-	if err != nil {
-		return err
-	}
-	f := tgapi.MakeFileable(message.Chat.ID, i.FileID, i.FileType, c)
-	_, err = bot.Send(f)
-	return err
+	return i.SendToChat(ctx, message.Chat.ID)
 }

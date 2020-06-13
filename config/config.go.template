@@ -4,4 +4,5 @@ const (
 	TgToken     = "12345678:AABBCCDDEEFF"
 	KGAPIKey    = "DEADBEEF"
 	InitAdminID = 88888888
+	ChannelID   = 42424242 // Set to 0 to disable
 )

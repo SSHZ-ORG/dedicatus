@@ -12,40 +12,24 @@ A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine
 4. 重复以上两步若干次，Telegram 就会在输入 `@` 时自动提示 `@koebuta_bot` 了。
 
 `<姓名>` 的部分可以使用空格分隔多个声优。所有指定声优均出现的图才会被返回。此搜索支持使用别名，例如搜索「种酱」将会返回種田梨沙。别名也可能指向多个声优，例如搜索「樱熊」将会返回佐倉綾音和村川梨衣同时出现的图。
- 
-### 添加未索引的声优 / 给已索引的声优增加别名
-
-1. 给 Bot 发送消息 `/s <姓名>`。
-2. 如果 Bot 回复 `Found Personality`，则已经被索引，但是您仍然可以增加别名；如果 Bot 回复 `Not found`，则未被索引。
-3. 找一个 Admin，告知想要增加的声优和别名。
-
-若您找不到一个 Admin，可以直接在本项目提交 Issue。
 
 ### ~~再~~生产 GIF
 
-参见 [extras/mpv_gif](extras/mpv_gif)。
+推荐使用 [extras/mpv_gif](extras/mpv_gif)。
 
-### 添加 GIF
-
-1. 把 GIF 发送给 Bot。
-2. Bot 会回复 `New GIF XXXXXXXX`。
-3. 找一个 Contributor，告知上一步中获得的 GIF ID 和应当关联的声优。
-
-若您找不到一个 Contributor，可以直接在本项目提交 Issue。
-
-### 成为 Contributor
-
-可以通过给 Bot 发送消息 `/me` 来确认您的 UID 和权限。
-
-目前成为 Contributor 主要靠随缘。
-
-### 新功能许愿 / Bug 报告
-
-找一个 Admin，吼。
-
-或者
-
-在本项目提交 Issue。
+若使用其他工具，请：
+* 尽量使用 MPEG4_GIF 而不是真 GIF。
+    * 就算是真 GIF 客户端也会在发送时现场转成 mp4。
+* 确保 MPEG4_GIF 满足：
+    * 只有一条 h264 视频轨，没有音频轨。
+        * 有音频轨会识别为 video。Dedicatus 理论上支持，但是 Telegram 各平台客户端都存在一些问题因此暂时不建议使用。
+        * 另外 Telegram 不发送 video 的文件名。
+    * 使用 `yuv420p`。
+        * 一些平台客户端无法正确处理其他格式。
+    * 像素长宽比 (PAR) 1:1。
+        * 否则客户端会爆炸。
+    * 短边分辨率最大 720 像素。
+        * 否则识别为 video。
 
 ### Admin & Contributor Guides
 
@@ -58,7 +42,7 @@ A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine
 2. 在 BotFather 启用 Inline Mode 和 Inline Feedback。
 3. 复制 `config` 目录下的 `config.go.template` 为 `config.go`。
 4. 编辑 `config.go`，设定 Telegram API Key, Knowledge Graph API Key 以及初始 Admin Telegram UID。
-5. `gcloud app deploy`。
+5. `gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml`。
 6. 访问 `https://your-application-id.appspot.com/admin/register`，应当看到一个 `true`。
 7. Profit!
 

@@ -458,7 +458,7 @@ func commandQueryKG(ctx context.Context, bot *tgbotapi.BotAPI, args []string, me
 	}
 
 	reply := makeReplyMessage(message, "```json\n"+encoded+"\n```")
-	reply.ParseMode = "MarkdownV2"
+	reply.ParseMode = tgbotapi.ModeMarkdownV2
 	reply.DisableWebPagePreview = true
 	if inputName == name {
 		keyboard := tgbotapi.NewReplyKeyboard([]tgbotapi.KeyboardButton{tgbotapi.NewKeyboardButton(fmt.Sprintf("/n %s %s", name, id))})

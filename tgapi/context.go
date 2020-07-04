@@ -29,7 +29,13 @@ func NewContext(ctx context.Context, user *tgbotapi.User) context.Context {
 }
 
 func fromContext(ctx context.Context) tgContextData {
-	return ctx.Value(tgKey).(tgContextData)
+	if d, ok := ctx.Value(tgKey).(tgContextData); ok {
+		return d
+	}
+	// User not in session, user will be null and auth checks all return false.
+	return tgContextData{
+		bot: NewTgBotNoCheck(ctx),
+	}
 }
 
 func BotFromContext(ctx context.Context) *tgbotapi.BotAPI {

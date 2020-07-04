@@ -35,3 +35,15 @@ func fromContext(ctx context.Context) tgContextData {
 func BotFromContext(ctx context.Context) *tgbotapi.BotAPI {
 	return fromContext(ctx).bot
 }
+
+func UserFromContext(ctx context.Context) *tgbotapi.User {
+	return fromContext(ctx).user
+}
+
+func IsAdmin(ctx context.Context) bool {
+	return fromContext(ctx).isAdmin
+}
+
+func IsContributor(ctx context.Context) bool {
+	return fromContext(ctx).isContributor
+}

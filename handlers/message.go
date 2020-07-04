@@ -21,7 +21,7 @@ const (
 	errorMessageNotContributor = "Only contributors can do this, sorry."
 )
 
-var commandMap = map[string]func(ctx context.Context, args []string, userID int) (string, error){
+var commandMap = map[string]func(ctx context.Context, args []string) (string, error){
 	"/start": commandStart,
 	"/me":    commandUserInfo,
 	"/n":     commandCreatePersonality,
@@ -32,7 +32,7 @@ var commandMap = map[string]func(ctx context.Context, args []string, userID int)
 	"/stats": commandStats,
 }
 
-var complexCommandMap = map[string]func(ctx context.Context, bot *tgbotapi.BotAPI, args []string, message *tgbotapi.Message) error{
+var complexCommandMap = map[string]func(ctx context.Context, args []string, message *tgbotapi.Message) error{
 	"/kg":     commandQueryKG,
 	"/sendme": commandSendMe,
 }
@@ -60,12 +60,11 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update) error {
 		var err error
 
 		args := strings.Fields(message.Text)
-		userID := message.From.ID
 
 		if handler, ok := commandMap[args[0]]; ok {
-			replyMessage, err = handler(ctx, args, userID)
+			replyMessage, err = handler(ctx, args)
 		} else if handler, ok := complexCommandMap[args[0]]; ok {
-			err = handler(ctx, bot, args, message)
+			err = handler(ctx, args, message)
 		} else {
 			replyMessage = "Command not recognized."
 		}
@@ -234,19 +233,16 @@ func handleTGFileCaption(ctx context.Context, tgFile *tgapi.TGFile, caption stri
 	return fmt.Sprintf("Updated to:\n%s", s), nil
 }
 
-func commandStart(ctx context.Context, args []string, userID int) (string, error) {
+func commandStart(ctx context.Context, args []string) (string, error) {
 	return fmt.Sprintf("Dedicatus %s", appengine.VersionID(ctx)), nil
 }
 
-func commandUserInfo(ctx context.Context, args []string, userID int) (string, error) {
-	c := tgapi.GetConfig(ctx)
-
-	return fmt.Sprintf("User %d\nisAdmin: %v\nisContributor: %v", userID, c.IsAdmin(userID), c.IsContributor(userID)), nil
+func commandUserInfo(ctx context.Context, args []string) (string, error) {
+	return fmt.Sprintf("User %d\nisAdmin: %v\nisContributor: %v", tgapi.UserFromContext(ctx).ID, tgapi.IsAdmin(ctx), tgapi.IsContributor(ctx)), nil
 }
 
-func commandCreatePersonality(ctx context.Context, args []string, userID int) (string, error) {
-	c := tgapi.GetConfig(ctx)
-	if !c.IsAdmin(userID) {
+func commandCreatePersonality(ctx context.Context, args []string) (string, error) {
+	if !tgapi.IsAdmin(ctx) {
 		return errorMessageNotAdmin, nil
 	}
 
@@ -293,7 +289,7 @@ func commandCreatePersonality(ctx context.Context, args []string, userID int) (s
 	return fmt.Sprintf("Created Personality %s", s), nil
 }
 
-func commandFindPersonality(ctx context.Context, args []string, userID int) (string, error) {
+func commandFindPersonality(ctx context.Context, args []string) (string, error) {
 	if len(args) != 2 {
 		return "Usage:\n/s <Query>\nExample: /s 井口裕香", nil
 	}
@@ -325,9 +321,8 @@ func commandFindPersonality(ctx context.Context, args []string, userID int) (str
 	return fmt.Sprintf("Found Personality:\n%s", strings.Join(ss, "\n")), nil
 }
 
-func commandUpdatePersonalityNickname(ctx context.Context, args []string, userID int) (string, error) {
-	c := tgapi.GetConfig(ctx)
-	if !c.IsAdmin(userID) {
+func commandUpdatePersonalityNickname(ctx context.Context, args []string) (string, error) {
+	if !tgapi.IsAdmin(ctx) {
 		return errorMessageNotAdmin, nil
 	}
 
@@ -369,9 +364,8 @@ func commandUpdatePersonalityNickname(ctx context.Context, args []string, userID
 	}
 }
 
-func commandEditAlias(ctx context.Context, args []string, userID int) (string, error) {
-	c := tgapi.GetConfig(ctx)
-	if !c.IsAdmin(userID) {
+func commandEditAlias(ctx context.Context, args []string) (string, error) {
+	if !tgapi.IsAdmin(ctx) {
 		return errorMessageNotAdmin, nil
 	}
 
@@ -404,15 +398,16 @@ func commandEditAlias(ctx context.Context, args []string, userID int) (string, e
 	return fmt.Sprintf("Updated Alias %s", s), nil
 }
 
-func commandManageContributors(ctx context.Context, args []string, userID int) (string, error) {
-	c := tgapi.GetConfig(ctx)
-	if !c.IsAdmin(userID) {
+func commandManageContributors(ctx context.Context, args []string) (string, error) {
+	if !tgapi.IsAdmin(ctx) {
 		return errorMessageNotAdmin, nil
 	}
 
 	if len(args) != 3 || (args[1] != "add" && args[1] != "delete") {
 		return "Usage:\n/c add|delete <UserId>\nExample: /c add 88888888", nil
 	}
+
+	c := tgapi.GetConfig(ctx)
 
 	newContributor, err := strconv.Atoi(args[2])
 	if err != nil {
@@ -439,11 +434,10 @@ func commandManageContributors(ctx context.Context, args []string, userID int) (
 	return "Contributors updated", nil
 }
 
-func commandQueryKG(ctx context.Context, bot *tgbotapi.BotAPI, args []string, message *tgbotapi.Message) error {
-	userId := message.From.ID
+func commandQueryKG(ctx context.Context, args []string, message *tgbotapi.Message) error {
+	bot := tgapi.BotFromContext(ctx)
 
-	c := tgapi.GetConfig(ctx)
-	if !c.IsAdmin(userId) {
+	if !tgapi.IsAdmin(ctx) {
 		_, err := bot.Send(makeReplyMessage(message, errorMessageNotAdmin))
 		return err
 	}
@@ -472,9 +466,8 @@ func commandQueryKG(ctx context.Context, bot *tgbotapi.BotAPI, args []string, me
 	return err
 }
 
-func commandStats(ctx context.Context, args []string, userID int) (string, error) {
-	c := tgapi.GetConfig(ctx)
-	if !c.IsAdmin(userID) {
+func commandStats(ctx context.Context, args []string) (string, error) {
+	if !tgapi.IsAdmin(ctx) {
 		return errorMessageNotAdmin, nil
 	}
 
@@ -508,7 +501,9 @@ func commandStats(ctx context.Context, args []string, userID int) (string, error
 	return strings.Join(rs, "\n"), nil
 }
 
-func commandSendMe(ctx context.Context, bot *tgbotapi.BotAPI, args []string, message *tgbotapi.Message) error {
+func commandSendMe(ctx context.Context, args []string, message *tgbotapi.Message) error {
+	bot := tgapi.BotFromContext(ctx)
+
 	if len(args) != 2 {
 		_, err := bot.Send(makeReplyMessage(message, "Usage:\n/sendme <FileUniqueID>"))
 		return err

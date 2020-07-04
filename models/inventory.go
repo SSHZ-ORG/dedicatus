@@ -53,7 +53,12 @@ func (i Inventory) ToString(ctx context.Context) (string, error) {
 		pns = append(pns, p.CanonicalName)
 	}
 
-	return fmt.Sprintf("%s\nUniqueID: %s\n%x (%d bytes)\n[%s]", i.FileName, i.FileUniqueID, i.MD5Sum, i.FileSize, strings.Join(pns, ", ")), nil
+	fileNameString := ""
+	if tgapi.IsContributor(ctx) {
+		fileNameString = i.FileName + "\n"
+	}
+
+	return fmt.Sprintf("%sUniqueID: %s\n%x (%d bytes)\n[%s]", fileNameString, i.FileUniqueID, i.MD5Sum, i.FileSize, strings.Join(pns, ", ")), nil
 }
 
 func (i Inventory) SendToChat(ctx context.Context, chatID int64) error {

@@ -61,7 +61,7 @@ func (i Inventory) SendToChat(ctx context.Context, chatID int64) error {
 	if err != nil {
 		return err
 	}
-	_, err = tgapi.NewTgBotNoCheck(ctx).Send(tgapi.MakeFileable(chatID, i.FileID, i.FileType, caption))
+	_, err = tgapi.BotFromContext(ctx).Send(tgapi.MakeFileable(chatID, i.FileID, i.FileType, caption))
 	return err
 }
 

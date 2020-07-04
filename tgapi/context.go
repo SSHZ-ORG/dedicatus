@@ -19,7 +19,7 @@ type tgContextData struct {
 
 func NewContext(ctx context.Context, user *tgbotapi.User) context.Context {
 	c := GetConfig(ctx)
-	bot := NewTgBotNoCheck(ctx)
+	bot := newTgBotNoCheck(ctx)
 	return context.WithValue(ctx, tgKey, tgContextData{
 		bot:           bot,
 		user:          user,
@@ -34,7 +34,7 @@ func fromContext(ctx context.Context) tgContextData {
 	}
 	// User not in session, user will be null and auth checks all return false.
 	return tgContextData{
-		bot: NewTgBotNoCheck(ctx),
+		bot: newTgBotNoCheck(ctx),
 	}
 }
 

@@ -18,7 +18,7 @@ func NewTgBot(ctx context.Context) (*tgbotapi.BotAPI, error) {
 	return tgbotapi.NewBotAPIWithClient(config.TgToken, urlfetch.Client(ctx))
 }
 
-func NewTgBotNoCheck(ctx context.Context) *tgbotapi.BotAPI {
+func newTgBotNoCheck(ctx context.Context) *tgbotapi.BotAPI {
 	bot := &tgbotapi.BotAPI{
 		Token:  config.TgToken,
 		Client: urlfetch.Client(ctx),
@@ -38,7 +38,7 @@ func TgWebhookPath(token string) string {
 }
 
 func FetchFileInfo(ctx context.Context, fileID string) (*tgbotapi.File, []byte, error) {
-	bot := NewTgBotNoCheck(ctx)
+	bot := newTgBotNoCheck(ctx)
 	file, err := bot.GetFile(tgbotapi.FileConfig{FileID: fileID})
 	if err != nil {
 		return nil, nil, err

@@ -34,7 +34,7 @@ func TgWebhookPath(token string) string {
 }
 
 func FetchFileInfo(ctx context.Context, fileID string) (*tgbotapi.File, []byte, error) {
-	bot := newTgBotNoCheck(ctx)
+	bot := BotFromContext(ctx)
 	file, err := bot.GetFile(tgbotapi.FileConfig{FileID: fileID})
 	if err != nil {
 		return nil, nil, err

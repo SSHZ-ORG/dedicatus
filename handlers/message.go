@@ -44,7 +44,9 @@ func makeReplyMessage(message *tgbotapi.Message, reply string) *tgbotapi.Message
 	return &c
 }
 
-func HandleMessage(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
+func HandleMessage(ctx context.Context, update tgbotapi.Update) error {
+	bot := tgapi.BotFromContext(ctx)
+
 	message := update.Message
 	if message.Animation != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Animation != nil) {
 		return handleAnimation(ctx, message, bot)

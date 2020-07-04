@@ -6,7 +6,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func HandleChosenInlineResult(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
+func HandleChosenInlineResult(ctx context.Context, update tgbotapi.Update) error {
 	resultID := update.ChosenInlineResult.ResultID
 	return models.IncrementUsageCounter(ctx, resultID)
 }

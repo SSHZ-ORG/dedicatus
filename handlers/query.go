@@ -20,13 +20,13 @@ func constructInlineResults(inventories []*models.Inventory) []interface{} {
 	return results
 }
 
-func HandleInlineQuery(ctx context.Context, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
+func HandleInlineQuery(ctx context.Context, update tgbotapi.Update) error {
 	response, err := prepareResponse(ctx, update.InlineQuery)
 	if err != nil {
 		return err
 	}
 
-	_, err = bot.Request(response)
+	_, err = tgapi.BotFromContext(ctx).Request(response)
 	return err
 }
 

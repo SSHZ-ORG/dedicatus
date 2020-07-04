@@ -59,19 +59,30 @@ func (c Config) IsContributor(userID int) bool {
 type contextKey int
 
 const (
-	userKey contextKey = iota
+	tgKey contextKey = iota
 )
 
-type userContextData struct {
+type tgContextData struct {
+	bot                    *tgbotapi.BotAPI
 	user                   *tgbotapi.User
 	isAdmin, isContributor bool
 }
 
 func NewContext(ctx context.Context, user *tgbotapi.User) context.Context {
 	c := GetConfig(ctx)
-	return context.WithValue(ctx, userKey, userContextData{
+	bot := NewTgBotNoCheck(ctx)
+	return context.WithValue(ctx, tgKey, tgContextData{
+		bot:           bot,
 		user:          user,
 		isAdmin:       c.IsAdmin(user.ID),
 		isContributor: c.IsContributor(user.ID),
 	})
+}
+
+func fromContext(ctx context.Context) tgContextData {
+	return ctx.Value(tgKey).(tgContextData)
+}
+
+func BotFromContext(ctx context.Context) *tgbotapi.BotAPI {
+	return fromContext(ctx).bot
 }

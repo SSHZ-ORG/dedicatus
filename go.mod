@@ -1,13 +1,13 @@
 module github.com/SSHZ-ORG/dedicatus
 
 require (
-	cloud.google.com/go/storage v1.8.0
-	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.0.0-rc1.0.20200424181826-774f1e72e764
+	cloud.google.com/go/storage v1.10.0
+	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.0.0-rc1.0.20200524105246-38c2cb18eddd
 	github.com/gojp/kana v0.1.0
 	github.com/gorilla/mux v1.7.4
 	github.com/qedus/nds v1.0.0
-	golang.org/x/net v0.0.0-20200520182314-0ba52f642ac2
-	google.golang.org/api v0.25.0
+	golang.org/x/net v0.0.0-20200625001655-4c5254603344
+	google.golang.org/api v0.28.0
 	google.golang.org/appengine v1.6.6
 )
 

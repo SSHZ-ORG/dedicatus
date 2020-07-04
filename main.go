@@ -37,7 +37,7 @@ func main() {
 func registerWebhook(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 
-	err := models.CreateConfig(ctx)
+	err := tgapi.CreateConfig(ctx)
 	if err != nil {
 		log.Errorf(ctx, "%v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -139,6 +139,7 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 	bot := tgapi.NewTgBotNoCheck(ctx)
 
 	if update.Message != nil {
+		ctx = tgapi.NewContext(ctx, update.Message.From)
 		err = handlers.HandleMessage(ctx, update, bot)
 		// Internal errors from this handler should not be retried - log and tell TG we are good.
 		if err != nil {
@@ -148,10 +149,12 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if update.InlineQuery != nil {
+		ctx = tgapi.NewContext(ctx, update.InlineQuery.From)
 		err = handlers.HandleInlineQuery(ctx, update, bot)
 	}
 
 	if update.ChosenInlineResult != nil {
+		ctx = tgapi.NewContext(ctx, update.ChosenInlineResult.From)
 		err = handlers.HandleChosenInlineResult(ctx, update, bot)
 	}
 

@@ -127,7 +127,7 @@ func getInventoryByMD5(ctx context.Context, sum []byte) (*Inventory, error) {
 	return i, err
 }
 
-func CreateOrUpdateInventory(ctx context.Context, tgFile *tgapi.TGFile, personality []*datastore.Key, userID int, config Config) (*Inventory, error) {
+func CreateOrUpdateInventory(ctx context.Context, tgFile *tgapi.TGFile, personality []*datastore.Key, userID int, config tgapi.Config) (*Inventory, error) {
 	i := new(Inventory)
 
 	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {

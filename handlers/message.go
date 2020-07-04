@@ -171,7 +171,7 @@ func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *tgapi.
 }
 
 func handleTGFileCaption(ctx context.Context, tgFile *tgapi.TGFile, caption string, userID int) (string, error) {
-	c := models.GetConfig(ctx)
+	c := tgapi.GetConfig(ctx)
 	if !c.IsContributor(userID) {
 		return errorMessageNotContributor, nil
 	}
@@ -237,13 +237,13 @@ func commandStart(ctx context.Context, args []string, userID int) (string, error
 }
 
 func commandUserInfo(ctx context.Context, args []string, userID int) (string, error) {
-	c := models.GetConfig(ctx)
+	c := tgapi.GetConfig(ctx)
 
 	return fmt.Sprintf("User %d\nisAdmin: %v\nisContributor: %v", userID, c.IsAdmin(userID), c.IsContributor(userID)), nil
 }
 
 func commandCreatePersonality(ctx context.Context, args []string, userID int) (string, error) {
-	c := models.GetConfig(ctx)
+	c := tgapi.GetConfig(ctx)
 	if !c.IsAdmin(userID) {
 		return errorMessageNotAdmin, nil
 	}
@@ -324,7 +324,7 @@ func commandFindPersonality(ctx context.Context, args []string, userID int) (str
 }
 
 func commandUpdatePersonalityNickname(ctx context.Context, args []string, userID int) (string, error) {
-	c := models.GetConfig(ctx)
+	c := tgapi.GetConfig(ctx)
 	if !c.IsAdmin(userID) {
 		return errorMessageNotAdmin, nil
 	}
@@ -368,7 +368,7 @@ func commandUpdatePersonalityNickname(ctx context.Context, args []string, userID
 }
 
 func commandEditAlias(ctx context.Context, args []string, userID int) (string, error) {
-	c := models.GetConfig(ctx)
+	c := tgapi.GetConfig(ctx)
 	if !c.IsAdmin(userID) {
 		return errorMessageNotAdmin, nil
 	}
@@ -403,7 +403,7 @@ func commandEditAlias(ctx context.Context, args []string, userID int) (string, e
 }
 
 func commandManageContributors(ctx context.Context, args []string, userID int) (string, error) {
-	c := models.GetConfig(ctx)
+	c := tgapi.GetConfig(ctx)
 	if !c.IsAdmin(userID) {
 		return errorMessageNotAdmin, nil
 	}
@@ -430,7 +430,7 @@ func commandManageContributors(ctx context.Context, args []string, userID int) (
 		c.Contributors = utils.Remove(c.Contributors, newContributor)
 	}
 
-	if err = models.SetConfig(ctx, c); err != nil {
+	if err = tgapi.SetConfig(ctx, c); err != nil {
 		return "", err
 	}
 
@@ -440,7 +440,7 @@ func commandManageContributors(ctx context.Context, args []string, userID int) (
 func commandQueryKG(ctx context.Context, bot *tgbotapi.BotAPI, args []string, message *tgbotapi.Message) error {
 	userId := message.From.ID
 
-	c := models.GetConfig(ctx)
+	c := tgapi.GetConfig(ctx)
 	if !c.IsAdmin(userId) {
 		_, err := bot.Send(makeReplyMessage(message, errorMessageNotAdmin))
 		return err
@@ -471,7 +471,7 @@ func commandQueryKG(ctx context.Context, bot *tgbotapi.BotAPI, args []string, me
 }
 
 func commandStats(ctx context.Context, args []string, userID int) (string, error) {
-	c := models.GetConfig(ctx)
+	c := tgapi.GetConfig(ctx)
 	if !c.IsAdmin(userID) {
 		return errorMessageNotAdmin, nil
 	}

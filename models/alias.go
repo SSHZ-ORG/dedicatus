@@ -36,7 +36,7 @@ func getAliasKey(ctx context.Context, name string) *datastore.Key {
 }
 
 func TryFindPersonalitiesByAlias(ctx context.Context, query string) ([]*datastore.Key, error) {
-	query = strings.ToLower(query)
+	query = utils.NormalizeAlias(query)
 
 	a := new(Alias)
 	err := nds.Get(ctx, getAliasKey(ctx, query), a)
@@ -54,7 +54,7 @@ func TryFindPersonalitiesByAlias(ctx context.Context, query string) ([]*datastor
 }
 
 func AddAlias(ctx context.Context, alias string, personality *datastore.Key) (*Alias, error) {
-	alias = strings.ToLower(alias)
+	alias = utils.NormalizeAlias(alias)
 
 	a := new(Alias)
 	k := getAliasKey(ctx, alias)
@@ -73,7 +73,7 @@ func AddAlias(ctx context.Context, alias string, personality *datastore.Key) (*A
 }
 
 func DeleteAlias(ctx context.Context, alias string, personality *datastore.Key) (*Alias, error) {
-	alias = strings.ToLower(alias)
+	alias = utils.NormalizeAlias(alias)
 
 	a := new(Alias)
 	k := getAliasKey(ctx, alias)
@@ -101,8 +101,8 @@ func DeleteAlias(ctx context.Context, alias string, personality *datastore.Key) 
 }
 
 func CopyAlias(ctx context.Context, alias, newAlias string) (*Alias, error) {
-	alias = strings.ToLower(alias)
-	newAlias = strings.ToLower(newAlias)
+	alias = utils.NormalizeAlias(alias)
+	newAlias = utils.NormalizeAlias(newAlias)
 
 	a := new(Alias)
 	k := getAliasKey(ctx, alias)
@@ -122,8 +122,8 @@ func CopyAlias(ctx context.Context, alias, newAlias string) (*Alias, error) {
 }
 
 func RenameAlias(ctx context.Context, alias, newAlias string) (*Alias, error) {
-	alias = strings.ToLower(alias)
-	newAlias = strings.ToLower(newAlias)
+	alias = utils.NormalizeAlias(alias)
+	newAlias = utils.NormalizeAlias(newAlias)
 
 	a := new(Alias)
 	k := getAliasKey(ctx, alias)

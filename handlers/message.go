@@ -330,7 +330,7 @@ func commandUpdatePersonalityNickname(ctx context.Context, args []string) (strin
 	}
 
 	name := args[2]
-	alias := strings.ToLower(args[3])
+	alias := utils.NormalizeAlias(args[3])
 
 	key, _, err := models.GetPersonalityByName(ctx, name)
 	if err != nil {

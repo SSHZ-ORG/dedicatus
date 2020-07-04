@@ -14,10 +14,6 @@ import (
 	"google.golang.org/appengine/urlfetch"
 )
 
-func NewTgBot(ctx context.Context) (*tgbotapi.BotAPI, error) {
-	return tgbotapi.NewBotAPIWithClient(config.TgToken, urlfetch.Client(ctx))
-}
-
 func newTgBotNoCheck(ctx context.Context) *tgbotapi.BotAPI {
 	bot := &tgbotapi.BotAPI{
 		Token:  config.TgToken,

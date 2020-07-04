@@ -127,7 +127,7 @@ func getInventoryByMD5(ctx context.Context, sum []byte) (*Inventory, error) {
 	return i, err
 }
 
-func CreateOrUpdateInventory(ctx context.Context, tgFile *tgapi.TGFile, personality []*datastore.Key, userID int, config tgapi.Config) (*Inventory, error) {
+func CreateOrUpdateInventory(ctx context.Context, tgFile *tgapi.TGFile, personality []*datastore.Key) (*Inventory, error) {
 	i := new(Inventory)
 
 	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {
@@ -135,7 +135,7 @@ func CreateOrUpdateInventory(ctx context.Context, tgFile *tgapi.TGFile, personal
 		err := nds.Get(ctx, key, i)
 
 		// This is an existing Inventory, only admins or original creator can update it.
-		if err == nil && !(config.IsAdmin(userID) || i.Creator == userID) {
+		if err == nil && !(tgapi.IsAdmin(ctx) || i.Creator == tgapi.UserFromContext(ctx).ID) {
 			return ErrorOnlyAdminCanUpdateInventory
 		}
 		if err != nil && err != datastore.ErrNoSuchEntity {
@@ -155,7 +155,7 @@ func CreateOrUpdateInventory(ctx context.Context, tgFile *tgapi.TGFile, personal
 		i.LastUsed = time.Now()
 
 		if i.Creator == 0 {
-			i.Creator = userID
+			i.Creator = tgapi.UserFromContext(ctx).ID
 		}
 
 		shouldScheduleMetadataUpdate := err == datastore.ErrNoSuchEntity

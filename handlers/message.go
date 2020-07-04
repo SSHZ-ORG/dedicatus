@@ -49,10 +49,10 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update) error {
 
 	message := update.Message
 	if message.Animation != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Animation != nil) {
-		return handleAnimation(ctx, message, bot)
+		return handleAnimation(ctx, message)
 	}
 	if message.Video != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Video != nil) {
-		return handleVideo(ctx, message, bot)
+		return handleVideo(ctx, message)
 	}
 
 	if strings.HasPrefix(message.Text, "/") {
@@ -84,27 +84,27 @@ func HandleMessage(ctx context.Context, update tgbotapi.Update) error {
 	return nil
 }
 
-func handleAnimation(ctx context.Context, message *tgbotapi.Message, bot *tgbotapi.BotAPI) error {
+func handleAnimation(ctx context.Context, message *tgbotapi.Message) error {
 	animation := message.Animation
 	if message.ReplyToMessage != nil && message.ReplyToMessage.Animation != nil {
 		animation = message.ReplyToMessage.Animation
 	}
 
 	tgFile := tgapi.TGFileFromChatAnimation(animation)
-	return handleTGFile(ctx, message, tgFile, bot)
+	return handleTGFile(ctx, message, tgFile)
 }
 
-func handleVideo(ctx context.Context, message *tgbotapi.Message, bot *tgbotapi.BotAPI) error {
+func handleVideo(ctx context.Context, message *tgbotapi.Message) error {
 	video := message.Video
 	if message.ReplyToMessage != nil && message.ReplyToMessage.Video != nil {
 		video = message.ReplyToMessage.Video
 	}
 
 	tgFile := tgapi.TGFileFromVideo(video)
-	return handleTGFile(ctx, message, tgFile, bot)
+	return handleTGFile(ctx, message, tgFile)
 }
 
-func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *tgapi.TGFile, bot *tgbotapi.BotAPI) error {
+func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *tgapi.TGFile) error {
 	caption := message.Caption
 	if message.ReplyToMessage != nil {
 		caption = message.Text
@@ -149,7 +149,7 @@ func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *tgapi.
 	if allowUpdate {
 		if caption != "" {
 			// Update Inventory, if instructed
-			resp, err := handleTGFileCaption(ctx, tgFile, caption, message.From.ID)
+			resp, err := handleTGFileCaption(ctx, tgFile, caption)
 			if err != nil {
 				return err
 			}
@@ -165,15 +165,14 @@ func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *tgapi.
 	}
 
 	if len(replyMessages) > 0 {
-		_, err := bot.Send(makeReplyMessage(message, strings.Join(replyMessages, "\n")))
+		_, err := tgapi.BotFromContext(ctx).Send(makeReplyMessage(message, strings.Join(replyMessages, "\n")))
 		return err
 	}
 	return nil
 }
 
-func handleTGFileCaption(ctx context.Context, tgFile *tgapi.TGFile, caption string, userID int) (string, error) {
-	c := tgapi.GetConfig(ctx)
-	if !c.IsContributor(userID) {
+func handleTGFileCaption(ctx context.Context, tgFile *tgapi.TGFile, caption string) (string, error) {
+	if !tgapi.IsContributor(ctx) {
 		return errorMessageNotContributor, nil
 	}
 
@@ -181,7 +180,7 @@ func handleTGFileCaption(ctx context.Context, tgFile *tgapi.TGFile, caption stri
 
 	if args[0] == "/r" {
 		// Use the received document to replace some existing Inventory.
-		if !c.IsAdmin(userID) {
+		if !tgapi.IsAdmin(ctx) {
 			return errorMessageNotAdmin, nil
 		}
 
@@ -218,7 +217,7 @@ func handleTGFileCaption(ctx context.Context, tgFile *tgapi.TGFile, caption stri
 		personalityKeys = append(personalityKeys, key)
 	}
 
-	i, err := models.CreateOrUpdateInventory(ctx, tgFile, personalityKeys, userID, c)
+	i, err := models.CreateOrUpdateInventory(ctx, tgFile, personalityKeys)
 	if err != nil {
 		if err == models.ErrorOnlyAdminCanUpdateInventory {
 			return "This GIF is already known. Only admins or its creator can modify it now.", nil

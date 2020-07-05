@@ -320,6 +320,7 @@ func ReplaceFileID(ctx context.Context, oldFileUniqueID string, newFile *tgapi.T
 
 		i.MD5Sum = nil
 		i.FileSize = 0
+		i.TwitterMediaID = ""
 
 		if err := nds.Delete(ctx, oldKey); err != nil {
 			return err

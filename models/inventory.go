@@ -39,18 +39,28 @@ type Inventory struct {
 
 	MD5Sum   datastore.ByteString
 	FileSize int
+
+	TwitterMediaID string
 }
 
-func (i Inventory) ToString(ctx context.Context) (string, error) {
+func (i Inventory) PersonalityNames(ctx context.Context) ([]string, error) {
 	ps := make([]*Personality, len(i.Personality))
 	err := nds.GetMulti(ctx, i.Personality, ps)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var pns []string
 	for _, p := range ps {
 		pns = append(pns, p.CanonicalName)
+	}
+	return pns, nil
+}
+
+func (i Inventory) ToString(ctx context.Context) (string, error) {
+	pns, err := i.PersonalityNames(ctx)
+	if err != nil {
+		return "", nil
 	}
 
 	fileNameString := ""
@@ -350,4 +360,20 @@ func RotateReservoir(ctx context.Context) error {
 		return err
 	}
 	return reservoir.RefillReservoir(ctx, keys)
+}
+
+func SetTwitterMediaID(ctx context.Context, fileUniqueID, twitterMediaID string) error {
+	i := new(Inventory)
+	key := inventoryKey(ctx, fileUniqueID)
+
+	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
+		if err := nds.Get(ctx, key, i); err != nil {
+			return err
+		}
+
+		i.TwitterMediaID = twitterMediaID
+
+		_, err := nds.Put(ctx, key, i)
+		return err
+	}, &datastore.TransactionOptions{})
 }

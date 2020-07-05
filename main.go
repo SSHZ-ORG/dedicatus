@@ -14,6 +14,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/scheduler"
 	"github.com/SSHZ-ORG/dedicatus/scheduler/metadatamode"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
+	"github.com/SSHZ-ORG/dedicatus/twapi"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/gorilla/mux"
 	"google.golang.org/appengine"
@@ -29,6 +30,7 @@ func main() {
 	r.HandleFunc(paths.UpdateFileMetadata, updateFileMetadata)
 	r.HandleFunc(paths.QueueUpdateFileMetadata, queueUpdateFileMetadata)
 	r.HandleFunc(paths.RotateReservoir, rotateReservoir)
+	r.HandleFunc(paths.PostTweet, postTweet)
 
 	http.Handle("/", r)
 	appengine.Main()
@@ -111,6 +113,15 @@ func rotateReservoir(w http.ResponseWriter, r *http.Request) {
 	err := models.RotateReservoir(ctx)
 	if err != nil {
 		log.Errorf(ctx, "models.RotateReservoir: %+v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func postTweet(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+	if err := twapi.SendInventoryToTwitter(ctx, r.FormValue("id")); err != nil {
+		log.Errorf(ctx, "twapi.SendInventoryToTwitter: %+v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

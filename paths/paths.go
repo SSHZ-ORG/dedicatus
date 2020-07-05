@@ -5,4 +5,5 @@ const (
 	UpdateFileMetadata      = "/admin/updateFileMetadata"
 	QueueUpdateFileMetadata = "/admin/queueUpdateFileMetadata"
 	RotateReservoir         = "/admin/rotateReservoir"
+	PostTweet               = "/admin/postTweet"
 )

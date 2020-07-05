@@ -2,3 +2,7 @@ cron:
   - description: "Warm-up + Rotate Random Reservoir"
     url: /admin/rotateReservoir
     schedule: every 2 minutes
+
+  - description: "Post a Random Inventory to Twitter"
+    url: /admin/postTweet
+    schedule: every 4 hours

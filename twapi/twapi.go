@@ -23,7 +23,8 @@ func getClient(ctx context.Context) *anaconda.TwitterApi {
 	return anaconda.NewTwitterApiWithCredentials(config.TwitterAccessToken, config.TwitterAccessTokenSecret, config.TwitterAPIKey, config.TwitterAPIKeySecret)
 }
 
-const chunkSizeLimit = 5 * 1024 * 1024
+const fileSizeLimit = 15 * 1024 * 1024
+const chunkSizeLimit = 3 * 1024 * 1024 // Twitter allows 5MB after base64 encoding, technically we can do 5 * 3 / 4 MB.
 
 func uploadInventory(ctx context.Context, api *anaconda.TwitterApi, i *models.Inventory) (string, error) {
 	_, fileBytes, err := tgapi.FetchFileInfo(ctx, i.FileID)
@@ -110,7 +111,12 @@ func SendInventoryToTwitter(ctx context.Context, fileUniqueID string) error {
 
 	i, err := models.GetInventory(ctx, fileUniqueID)
 	if err != nil {
-		panic(err)
+		return err
+	}
+
+	if i.FileSize > fileSizeLimit {
+		log.Debugf(ctx, "%s is too large for Twitter.", fileUniqueID)
+		return nil
 	}
 
 	if i.TwitterMediaID == "" {

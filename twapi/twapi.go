@@ -67,6 +67,8 @@ func uploadInventory(ctx context.Context, api *anaconda.TwitterApi, i *models.In
 	if err != nil {
 		return "", err
 	}
+
+	log.Debugf(ctx, "Uploaded %s to Twitter as media_id %s", i.FileUniqueID, m.MediaIDString)
 	return m.MediaIDString, nil
 }
 
@@ -107,7 +109,7 @@ func SendInventoryToTwitter(ctx context.Context, fileUniqueID string) error {
 		fileUniqueID = keys[0].StringID()
 	}
 
-	log.Debugf(ctx, "Sending %s to Twitter", fileUniqueID)
+	log.Debugf(ctx, "Sending %s to Twitter.", fileUniqueID)
 
 	i, err := models.GetInventory(ctx, fileUniqueID)
 	if err != nil {
@@ -120,7 +122,7 @@ func SendInventoryToTwitter(ctx context.Context, fileUniqueID string) error {
 	}
 
 	if i.TwitterMediaID == "" {
-		log.Debugf(ctx, "We never upload this to Twitter. Uploading now.", fileUniqueID)
+		log.Debugf(ctx, "We never upload this to Twitter. Uploading now.")
 
 		mediaID, err := uploadInventory(ctx, api, i)
 		if err != nil {

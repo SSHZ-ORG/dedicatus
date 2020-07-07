@@ -42,6 +42,8 @@ type Inventory struct {
 
 	TwitterMediaID string
 	LastTweetTime  time.Time
+
+	ModelVersion int
 }
 
 func (i Inventory) PersonalityNames(ctx context.Context) ([]string, error) {
@@ -80,6 +82,8 @@ func (i Inventory) SendToChat(ctx context.Context, chatID int64) error {
 	_, err = tgapi.BotFromContext(ctx).Send(tgapi.MakeFileable(chatID, i.FileID, i.FileType, caption))
 	return err
 }
+
+const inventoryCurrentModelVersion = 1
 
 func inventoryKey(ctx context.Context, fileUniqueID string) *datastore.Key {
 	return datastore.NewKey(ctx, inventoryEntityKind, fileUniqueID, 0, nil)
@@ -196,6 +200,8 @@ func CreateOrUpdateInventory(ctx context.Context, tgFile *tgapi.TGFile, personal
 		if i.Creator == 0 {
 			i.Creator = tgapi.UserFromContext(ctx).ID
 		}
+
+		i.ModelVersion = inventoryCurrentModelVersion
 
 		shouldScheduleMetadataUpdate := err == datastore.ErrNoSuchEntity
 

@@ -244,17 +244,12 @@ func queryInventoryKeys(ctx context.Context, personalities []*datastore.Key, sor
 	return keys, newCursor, nil
 }
 
-func QueryInventories(ctx context.Context, personalities []*datastore.Key, sortMode sortmode.SortMode, lastCursor, queryID string) ([]*Inventory, string, error) {
-	keys, newCursor, err := queryInventoryKeys(ctx, personalities, sortMode, lastCursor, queryID)
-	if err != nil {
-		return nil, "", err
-	}
-
+func bulkGetInventories(ctx context.Context, keys []*datastore.Key) ([]*Inventory, error) {
 	g := make([]*Inventory, len(keys))
-	err = nds.GetMulti(ctx, keys, g)
+	err := nds.GetMulti(ctx, keys, g)
 	if err != nil {
 		if tryFlattenDatastoreNoSuchEntityMultiError(err) != datastore.ErrNoSuchEntity {
-			return nil, "", err
+			return nil, err
 		}
 	}
 
@@ -265,6 +260,19 @@ func QueryInventories(ctx context.Context, personalities []*datastore.Key, sortM
 		}
 	}
 
+	return is, nil
+}
+
+func QueryInventories(ctx context.Context, personalities []*datastore.Key, sortMode sortmode.SortMode, lastCursor, queryID string) ([]*Inventory, string, error) {
+	keys, newCursor, err := queryInventoryKeys(ctx, personalities, sortMode, lastCursor, queryID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	is, err := bulkGetInventories(ctx, keys)
+	if err != nil {
+		return nil, "", err
+	}
 	return is, newCursor, nil
 }
 
@@ -363,11 +371,11 @@ func RotateReservoir(ctx context.Context) error {
 	return reservoir.RefillReservoir(ctx, keys)
 }
 
-func SetTwitterMediaID(ctx context.Context, fileUniqueID, twitterMediaID string) error {
+func SetTwitterMediaID(ctx context.Context, fileUniqueID, twitterMediaID string) (*Inventory, error) {
 	i := new(Inventory)
 	key := inventoryKey(ctx, fileUniqueID)
 
-	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
+	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {
 		if err := nds.Get(ctx, key, i); err != nil {
 			return err
 		}
@@ -377,4 +385,18 @@ func SetTwitterMediaID(ctx context.Context, fileUniqueID, twitterMediaID string)
 		_, err := nds.Put(ctx, key, i)
 		return err
 	}, &datastore.TransactionOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return i, nil
+}
+
+func RandomInventories(ctx context.Context, count int) ([]*Inventory, error) {
+	keys, err := reservoir.ReadReservoir(ctx, count)
+	if err != nil {
+		return nil, err
+	}
+
+	return bulkGetInventories(ctx, keys)
 }

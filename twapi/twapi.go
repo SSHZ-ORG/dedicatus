@@ -10,7 +10,6 @@ import (
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/SSHZ-ORG/dedicatus/config"
 	"github.com/SSHZ-ORG/dedicatus/models"
-	"github.com/SSHZ-ORG/dedicatus/models/reservoir"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/log"
@@ -94,30 +93,49 @@ func sendInventoryToTwitter(ctx context.Context, api *anaconda.TwitterApi, i *mo
 	return nil
 }
 
-func SendInventoryToTwitter(ctx context.Context, fileUniqueID string) error {
+func pickRandomInventories(ctx context.Context) (*models.Inventory, error) {
+	is, err := models.RandomInventories(ctx, 3)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(is) == 0 {
+		// Likely it's Cache Miss. Return error to let cron try again.
+		return nil, errors.New("received 0 random Inventories back")
+	}
+
+	for _, i := range is {
+		if i.TwitterMediaID == "" {
+			return i, nil
+		}
+	}
+	// All are posted before, just return the first one.
+	return is[0], nil
+}
+
+func SendInventoryToTwitter(ctx context.Context, manualFileUniqueId string) error {
 	api := getClient(ctx)
 	if api == nil {
 		// Twitter bot not enabled, return.
 		return nil
 	}
 
-	if fileUniqueID == "" {
-		keys, _ := reservoir.ReadReservoir(ctx, 1)
-		if len(keys) != 1 {
-			return nil
-		}
-		fileUniqueID = keys[0].StringID()
+	var i *models.Inventory
+	var err error
+
+	if manualFileUniqueId == "" {
+		i, err = pickRandomInventories(ctx)
+	} else {
+		i, err = models.GetInventory(ctx, manualFileUniqueId)
 	}
-
-	log.Debugf(ctx, "Sending %s to Twitter.", fileUniqueID)
-
-	i, err := models.GetInventory(ctx, fileUniqueID)
 	if err != nil {
 		return err
 	}
 
+	log.Debugf(ctx, "Sending %s to Twitter.", i.FileUniqueID)
+
 	if i.FileSize > fileSizeLimit {
-		log.Debugf(ctx, "%s is too large for Twitter.", fileUniqueID)
+		log.Debugf(ctx, "%s is too large for Twitter.", i.FileUniqueID)
 		return nil
 	}
 
@@ -129,12 +147,7 @@ func SendInventoryToTwitter(ctx context.Context, fileUniqueID string) error {
 			return err
 		}
 
-		err = models.SetTwitterMediaID(ctx, fileUniqueID, mediaID)
-		if err != nil {
-			return err
-		}
-
-		i, err = models.GetInventory(ctx, fileUniqueID)
+		i, err = models.SetTwitterMediaID(ctx, i.FileUniqueID, mediaID)
 		if err != nil {
 			return err
 		}

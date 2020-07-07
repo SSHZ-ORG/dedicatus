@@ -91,6 +91,9 @@ func sendInventoryToTwitter(ctx context.Context, api *anaconda.TwitterApi, i *mo
 	}
 
 	log.Debugf(ctx, "Sent tweet %s", t.IdStr)
+
+	_ = models.UpdateLastTweetTime(ctx, i.FileUniqueID)
+
 	return fmt.Sprintf("https://twitter.com/%s/status/%s", t.User.ScreenName, t.IdStr), nil
 }
 

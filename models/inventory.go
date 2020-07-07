@@ -41,6 +41,7 @@ type Inventory struct {
 	FileSize int
 
 	TwitterMediaID string
+	LastTweetTime  time.Time
 }
 
 func (i Inventory) PersonalityNames(ctx context.Context) ([]string, error) {
@@ -82,6 +83,29 @@ func (i Inventory) SendToChat(ctx context.Context, chatID int64) error {
 
 func inventoryKey(ctx context.Context, fileUniqueID string) *datastore.Key {
 	return datastore.NewKey(ctx, inventoryEntityKind, fileUniqueID, 0, nil)
+}
+
+func readWriteInventory(ctx context.Context, fileUniqueID string, modifier func(ctx context.Context, i *Inventory) error) (*Inventory, error) {
+	i := new(Inventory)
+	key := inventoryKey(ctx, fileUniqueID)
+
+	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {
+		if err := nds.Get(ctx, key, i); err != nil {
+			return err
+		}
+
+		if err := modifier(ctx, i); err != nil {
+			return err
+		}
+
+		_, err := nds.Put(ctx, key, i)
+		return err
+	}, &datastore.TransactionOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return i, nil
 }
 
 func GetInventory(ctx context.Context, fileUniqueID string) (*Inventory, error) {
@@ -291,21 +315,12 @@ func AllInventoriesStorageKeys(ctx context.Context) ([]string, error) {
 }
 
 func IncrementUsageCounter(ctx context.Context, fileUniqueID string) error {
-	key := inventoryKey(ctx, fileUniqueID)
-
-	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
-		i := new(Inventory)
-		// Get again to avoid race condition.
-		if err := nds.Get(ctx, key, i); err != nil {
-			return err
-		}
-
+	_, err := readWriteInventory(ctx, fileUniqueID, func(ctx context.Context, i *Inventory) error {
 		i.UsageCount += 1
 		i.LastUsed = time.Now()
-
-		_, err := nds.Put(ctx, key, i)
-		return err
-	}, &datastore.TransactionOptions{})
+		return nil
+	})
+	return err
 }
 
 func CountInventories(ctx context.Context, personality *datastore.Key) (int, error) {
@@ -344,19 +359,11 @@ func ReplaceFileID(ctx context.Context, oldFileUniqueID string, newFile *tgapi.T
 }
 
 func OverrideFileName(ctx context.Context, fileUniqueID, fileName string) error {
-	i := new(Inventory)
-	key := inventoryKey(ctx, fileUniqueID)
-
-	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
-		if err := nds.Get(ctx, key, i); err != nil {
-			return err
-		}
-
+	_, err := readWriteInventory(ctx, fileUniqueID, func(ctx context.Context, i *Inventory) error {
 		i.FileName = fileName
-
-		_, err := nds.Put(ctx, key, i)
-		return err
-	}, &datastore.TransactionOptions{})
+		return nil
+	})
+	return err
 }
 
 func RotateReservoir(ctx context.Context) error {
@@ -372,24 +379,18 @@ func RotateReservoir(ctx context.Context) error {
 }
 
 func SetTwitterMediaID(ctx context.Context, fileUniqueID, twitterMediaID string) (*Inventory, error) {
-	i := new(Inventory)
-	key := inventoryKey(ctx, fileUniqueID)
-
-	err := nds.RunInTransaction(ctx, func(ctx context.Context) error {
-		if err := nds.Get(ctx, key, i); err != nil {
-			return err
-		}
-
+	return readWriteInventory(ctx, fileUniqueID, func(ctx context.Context, i *Inventory) error {
 		i.TwitterMediaID = twitterMediaID
+		return nil
+	})
+}
 
-		_, err := nds.Put(ctx, key, i)
-		return err
-	}, &datastore.TransactionOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return i, nil
+func UpdateLastTweetTime(ctx context.Context, fileUniqueID string) error {
+	_, err := readWriteInventory(ctx, fileUniqueID, func(ctx context.Context, i *Inventory) error {
+		i.LastTweetTime = time.Now()
+		return nil
+	})
+	return err
 }
 
 func RandomInventories(ctx context.Context, count int) ([]*Inventory, error) {

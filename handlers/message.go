@@ -32,6 +32,7 @@ var commandMap = map[string]func(ctx context.Context, args []string) (string, er
 	"/c":     commandManageContributors,
 	"/stats": commandStats,
 	"/tweet": commandTweet,
+	"/fo":    commandUpdatePersonalityTwitterUserID,
 }
 
 var complexCommandMap = map[string]func(ctx context.Context, args []string, message *tgbotapi.Message) error{
@@ -536,4 +537,41 @@ func commandTweet(ctx context.Context, args []string) (string, error) {
 		return err.Error(), nil
 	}
 	return "Posted " + id, nil
+}
+
+func commandUpdatePersonalityTwitterUserID(ctx context.Context, args []string) (string, error) {
+	if !tgapi.IsAdmin(ctx) {
+		return errorMessageNotAdmin, nil
+	}
+
+	if len(args) != 3 {
+		return "Usage:\n/fo <CanonicalName> <TwitterScreenName>|-", nil
+	}
+
+	key, _, err := models.GetPersonalityByName(ctx, args[1])
+	if err != nil {
+		return "", err
+	}
+	if key == nil {
+		return fmt.Sprintf("Unknown Personality %s", args[1]), nil
+	}
+
+	screenName := args[2]
+	twitterUserID := ""
+
+	if screenName == models.PersonalityNoTwitterAccountPlaceholder {
+		twitterUserID = models.PersonalityNoTwitterAccountPlaceholder
+	} else {
+		twitterUserID, err = twapi.FollowUser(ctx, screenName)
+		if err != nil {
+			return err.Error(), nil
+		}
+	}
+
+	err = models.UpdateTwitterUserID(ctx, key, twitterUserID)
+	if err != nil {
+		return err.Error(), nil
+	}
+
+	return "Set TwitterUserID to " + twitterUserID, nil
 }

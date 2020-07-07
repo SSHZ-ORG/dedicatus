@@ -162,3 +162,14 @@ func SendInventoryToTwitter(ctx context.Context, manualFileUniqueId string) (str
 
 	return sendInventoryToTwitter(ctx, api, i)
 }
+
+func FollowUser(ctx context.Context, screenName string) (userID string, err error) {
+	api := getClient(ctx)
+
+	u, err := api.FollowUser(screenName)
+	if err != nil {
+		return "", err
+	}
+
+	return u.IdStr, nil
+}

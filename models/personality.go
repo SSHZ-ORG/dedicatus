@@ -13,6 +13,8 @@ import (
 type Personality struct {
 	KGID          string
 	CanonicalName string
+
+	TwitterUserID string
 }
 
 func (p Personality) ToString(ctx context.Context, key *datastore.Key) (string, error) {
@@ -23,6 +25,9 @@ func (p Personality) ToString(ctx context.Context, key *datastore.Key) (string, 
 
 	return fmt.Sprintf("kg:%s %s as (%s)", p.KGID, p.CanonicalName, strings.Join(as, ", ")), nil
 }
+
+// Stored in TwitterUserID field for Personalities that do not have a Twitter account.
+const PersonalityNoTwitterAccountPlaceholder = "-"
 
 func CreatePersonality(ctx context.Context, KGID string, name string) (*datastore.Key, *Personality, error) {
 	p := &Personality{
@@ -113,4 +118,18 @@ func TryFindPersonalitiesWithKG(ctx context.Context, query string) ([]*datastore
 
 func ListAllPersonalities(ctx context.Context) ([]*datastore.Key, error) {
 	return datastore.NewQuery(personalityEntityKind).KeysOnly().GetAll(ctx, nil)
+}
+
+func UpdateTwitterUserID(ctx context.Context, key *datastore.Key, userID string) error {
+	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
+		p := new(Personality)
+		if err := nds.Get(ctx, key, p); err != nil {
+			return err
+		}
+
+		p.TwitterUserID = userID
+
+		_, err := nds.Put(ctx, key, p)
+		return err
+	}, &datastore.TransactionOptions{})
 }

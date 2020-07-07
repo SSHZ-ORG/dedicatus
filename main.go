@@ -120,7 +120,7 @@ func rotateReservoir(w http.ResponseWriter, r *http.Request) {
 
 func postTweet(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
-	if err := twapi.SendInventoryToTwitter(ctx, r.FormValue("id")); err != nil {
+	if _, err := twapi.SendInventoryToTwitter(ctx, r.FormValue("id")); err != nil {
 		log.Errorf(ctx, "twapi.SendInventoryToTwitter: %+v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

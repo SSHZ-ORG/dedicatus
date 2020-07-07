@@ -9,6 +9,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/kgapi"
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
+	"github.com/SSHZ-ORG/dedicatus/twapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/net/context"
@@ -30,6 +31,7 @@ var commandMap = map[string]func(ctx context.Context, args []string) (string, er
 	"/a":     commandEditAlias,
 	"/c":     commandManageContributors,
 	"/stats": commandStats,
+	"/tweet": commandTweet,
 }
 
 var complexCommandMap = map[string]func(ctx context.Context, args []string, message *tgbotapi.Message) error{
@@ -518,4 +520,20 @@ func commandSendMe(ctx context.Context, args []string, message *tgbotapi.Message
 	}
 
 	return i.SendToChat(ctx, message.Chat.ID)
+}
+
+func commandTweet(ctx context.Context, args []string) (string, error) {
+	if !tgapi.IsAdmin(ctx) {
+		return errorMessageNotAdmin, nil
+	}
+
+	if len(args) != 2 {
+		return "Usage:\n/tweet <FileUniqueID>", nil
+	}
+
+	id, err := twapi.SendInventoryToTwitter(ctx, args[1])
+	if err != nil {
+		return err.Error(), nil
+	}
+	return "Posted " + id, nil
 }

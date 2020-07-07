@@ -3,6 +3,7 @@ package twapi
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 	"sync"
@@ -71,14 +72,14 @@ func uploadInventory(ctx context.Context, api *anaconda.TwitterApi, i *models.In
 	return m.MediaIDString, nil
 }
 
-func sendInventoryToTwitter(ctx context.Context, api *anaconda.TwitterApi, i *models.Inventory) error {
+func sendInventoryToTwitter(ctx context.Context, api *anaconda.TwitterApi, i *models.Inventory) (string, error) {
 	if i.TwitterMediaID == "" {
-		return errors.New("why are we sending not-uploaded inventory?")
+		return "", errors.New("why are we sending not-uploaded inventory?")
 	}
 
 	pns, err := i.PersonalityNames(ctx)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	for i, pn := range pns {
@@ -86,11 +87,11 @@ func sendInventoryToTwitter(ctx context.Context, api *anaconda.TwitterApi, i *mo
 	}
 	t, err := api.PostTweet(strings.Join(pns, "\n"), url.Values{"media_ids": []string{i.TwitterMediaID}})
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	log.Debugf(ctx, "Sent tweet %s", t.IdStr)
-	return nil
+	return fmt.Sprintf("https://twitter.com/%s/status/%s", t.User.ScreenName, t.IdStr), nil
 }
 
 func pickRandomInventories(ctx context.Context) (*models.Inventory, error) {
@@ -113,11 +114,11 @@ func pickRandomInventories(ctx context.Context) (*models.Inventory, error) {
 	return is[0], nil
 }
 
-func SendInventoryToTwitter(ctx context.Context, manualFileUniqueId string) error {
+func SendInventoryToTwitter(ctx context.Context, manualFileUniqueId string) (string, error) {
 	api := getClient(ctx)
 	if api == nil {
 		// Twitter bot not enabled, return.
-		return nil
+		return "", nil
 	}
 
 	var i *models.Inventory
@@ -129,14 +130,17 @@ func SendInventoryToTwitter(ctx context.Context, manualFileUniqueId string) erro
 		i, err = models.GetInventory(ctx, manualFileUniqueId)
 	}
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	log.Debugf(ctx, "Sending %s to Twitter.", i.FileUniqueID)
 
 	if i.FileSize > fileSizeLimit {
 		log.Debugf(ctx, "%s is too large for Twitter.", i.FileUniqueID)
-		return nil
+		if manualFileUniqueId != "" {
+			return "", errors.New("file too large")
+		}
+		return "", nil
 	}
 
 	if i.TwitterMediaID == "" {
@@ -144,12 +148,12 @@ func SendInventoryToTwitter(ctx context.Context, manualFileUniqueId string) erro
 
 		mediaID, err := uploadInventory(ctx, api, i)
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		i, err = models.SetTwitterMediaID(ctx, i.FileUniqueID, mediaID)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 

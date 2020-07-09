@@ -109,7 +109,7 @@ func pickRandomInventories(ctx context.Context) (*models.Inventory, error) {
 	}
 
 	for _, i := range is {
-		if i.TwitterMediaID == "" {
+		if i.LastTweetTime.IsZero() {
 			return i, nil
 		}
 	}

@@ -64,7 +64,7 @@ func AddAlias(ctx context.Context, alias string, personality *datastore.Key) (*A
 	}
 
 	a.Name = alias
-	if utils.KeyContains(a.Personality, personality) == -1 {
+	if utils.FindKeyIndex(a.Personality, personality) == -1 {
 		a.Personality = append(a.Personality, personality)
 	}
 
@@ -85,7 +85,7 @@ func DeleteAlias(ctx context.Context, alias string, personality *datastore.Key) 
 		return nil, err
 	}
 
-	idx := utils.KeyContains(a.Personality, personality)
+	idx := utils.FindKeyIndex(a.Personality, personality)
 	if idx != -1 {
 		a.Personality[idx] = a.Personality[len(a.Personality)-1]
 		a.Personality[len(a.Personality)-1] = nil

@@ -33,6 +33,7 @@ var commandMap = map[string]func(ctx context.Context, args []string) (string, er
 	"/stats": commandStats,
 	"/tweet": commandTweet,
 	"/fo":    commandUpdatePersonalityTwitterUserID,
+	"/ukt":   commandUnknownTwitterPersonalities,
 }
 
 var complexCommandMap = map[string]func(ctx context.Context, args []string, message *tgbotapi.Message) error{
@@ -574,4 +575,50 @@ func commandUpdatePersonalityTwitterUserID(ctx context.Context, args []string) (
 	}
 
 	return "Set TwitterUserID to " + twitterUserID, nil
+}
+
+func commandUnknownTwitterPersonalities(ctx context.Context, args []string) (string, error) {
+	if !tgapi.IsAdmin(ctx) {
+		return errorMessageNotAdmin, nil
+	}
+
+	if len(args) != 2 {
+		return "Usage:\n/ukt <Limit>", nil
+	}
+
+	limit, err := strconv.Atoi(args[1])
+	if err != nil {
+		return err.Error(), nil
+	}
+
+	is, err := models.LastTweetedInventories(ctx, limit)
+	if err != nil {
+		return err.Error(), nil
+	}
+
+	var pks []*datastore.Key
+	for _, i := range is {
+		for _, p := range i.Personality {
+			if utils.FindKeyIndex(pks, p) == -1 {
+				pks = append(pks, p)
+			}
+		}
+	}
+
+	ps, err := models.GetPersonalities(ctx, pks)
+	if err != nil {
+		return err.Error(), nil
+	}
+
+	var os []string
+	for _, p := range ps {
+		if p.TwitterUserID == "" {
+			os = append(os, p.CanonicalName)
+		}
+	}
+
+	if len(os) == 0 {
+		return "(empty)", nil
+	}
+	return strings.Join(os, ", "), nil
 }

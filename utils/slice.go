@@ -11,7 +11,7 @@ func Contains(s []int, e int) bool {
 	return false
 }
 
-func KeyContains(s []*datastore.Key, e *datastore.Key) int {
+func FindKeyIndex(s []*datastore.Key, e *datastore.Key) int {
 	for idx, i := range s {
 		if i.Equal(e) {
 			return idx

@@ -407,3 +407,16 @@ func RandomInventories(ctx context.Context, count int) ([]*Inventory, error) {
 
 	return bulkGetInventories(ctx, keys)
 }
+
+func LastTweetedInventories(ctx context.Context, limit int) ([]*Inventory, error) {
+	keys, err := datastore.NewQuery(inventoryEntityKind).KeysOnly().Order("-LastTweetTime").Limit(limit).GetAll(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, j := 0, len(keys)-1; i < j; i, j = i+1, j-1 {
+		keys[i], keys[j] = keys[j], keys[i]
+	}
+
+	return bulkGetInventories(ctx, keys)
+}

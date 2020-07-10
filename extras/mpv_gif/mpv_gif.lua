@@ -124,29 +124,60 @@ local function detect_dvd_bd_prefix(containing_path)
     return ""
 end
 
+local function ends_with(str, ending)
+    return ending == "" or str:sub(-#ending) == ending
+end
+
+local function construct_input_and_seeking_args(input_file_path)
+    local args = {}
+
+    local output_seek_arg = ""
+    if start_time ~= -1 then
+        -- Need to seek
+        if ends_with(mp.get_property("filename"), "ts") then
+            -- Likely MPEGTS. ffmpeg seeking may not pick the correct key frame to start with.
+            -- Let's do 2 seeks (-ss). The first one before input file (-i) to be start_time - 10.5 seconds.
+            -- Hopefully we get a key frame. (x264's default key frame interval is 250 frames, at 24 fps it's 10.4s.)
+            local input_seek_time = start_time - 10.5
+            if input_seek_time < 0 then
+                input_seek_time = 0
+            end
+            table.insert(args, string.format("-ss %s", input_seek_time))
+            output_seek_arg = string.format("-ss %s", start_time - input_seek_time)
+        else
+            -- No need to do 2 seeks.
+            table.insert(args, string.format("-ss %s", start_time))
+        end
+    end
+
+    table.insert(args, string.format("-i %s", wrap_param(esc(input_file_path))))
+
+    if output_seek_arg ~= "" then
+        table.insert(args, output_seek_arg)
+    end
+
+    if end_time ~= -1 then
+        local start_time_l = start_time
+        if start_time_l == -1 then
+            start_time_l = 0
+        end
+        table.insert(args, string.format("-t %s", end_time - start_time_l))
+    end
+
+    return table.concat(args, " ")
+end
+
 local function make_gif_internal(use_mpeg4)
     if start_time ~= -1 and end_time ~= -1 and start_time >= end_time then
         mp.osd_message("Invalid start/end time.")
         return
     end
 
-    local position_arg = ""
-    if start_time ~= -1 then
-        position_arg = string.format("-ss %s", start_time)
-    end
-
-    local duration_arg = ""
-    if end_time ~= -1 then
-        local start_time_l = start_time
-        if start_time_l == -1 then
-            start_time_l = 0
-        end
-        duration_arg = string.format("-t %s", end_time - start_time_l)
-    end
-
     mp.osd_message("Creating GIF.")
 
     local input_file_path = utils.join_path(mp.get_property("working-directory"), mp.get_property("path"))
+    local input_and_seeking_args = construct_input_and_seeking_args(input_file_path)
+
     local containing_path = utils.split_path(input_file_path)
     local input_file_name_no_ext = mp.get_property("filename/no-ext")
 
@@ -159,7 +190,7 @@ local function make_gif_internal(use_mpeg4)
 
         local filters = construct_filter(mpeg4_gif_filters, 720)
 
-        local args = string.format("ffmpeg -v warning %s -i %s %s -c:v libx264 -pix_fmt yuv420p -an -filter:v %s -y %s", position_arg, wrap_param(esc(input_file_path)), duration_arg, wrap_param(filters), wrap_param(esc(output_file_path)))
+        local args = string.format("ffmpeg -v warning %s -c:v libx264 -pix_fmt yuv420p -an -filter:v %s -y %s", input_and_seeking_args, wrap_param(filters), wrap_param(esc(output_file_path)))
         msg.info(args)
         os.execute(args)
     else
@@ -170,12 +201,12 @@ local function make_gif_internal(use_mpeg4)
         local temp_palette_path = os.tmpname() .. ".png"
 
         -- first, create the palette
-        local args = string.format("ffmpeg -v warning %s %s -i %s -vf %s -y %s", position_arg, duration_arg, wrap_param(esc(input_file_path)), wrap_param(filters .. ",palettegen"), wrap_param(esc(temp_palette_path)))
+        local args = string.format("ffmpeg -v warning %s -vf %s -y %s", input_and_seeking_args, wrap_param(filters .. ",palettegen"), wrap_param(esc(temp_palette_path)))
         msg.info(args)
         os.execute(args)
 
         -- then, create GIF
-        args = string.format("ffmpeg -v warning %s %s -i %s -i %s -lavfi %s -y %s", position_arg, duration_arg, wrap_param(esc(input_file_path)), wrap_param(esc(temp_palette_path)), wrap_param(filters .. "[x]; [x][1:v] paletteuse"), wrap_param(esc(output_file_path)))
+        args = string.format("ffmpeg -v warning %s -i %s -lavfi %s -y %s", input_and_seeking_args, wrap_param(esc(temp_palette_path)), wrap_param(filters .. "[x]; [x][1:v] paletteuse"), wrap_param(esc(output_file_path)))
         msg.info(args)
         os.execute(args)
     end

@@ -329,8 +329,15 @@ func IncrementUsageCounter(ctx context.Context, fileUniqueID string) error {
 	return err
 }
 
-func CountInventories(ctx context.Context, personality *datastore.Key) (int, error) {
-	return datastore.NewQuery(inventoryEntityKind).KeysOnly().Filter("Personality = ", personality).Count(ctx)
+func CountInventories(ctx context.Context, personality *datastore.Key, untweetedOnly bool) (int, error) {
+	query := datastore.NewQuery(inventoryEntityKind).KeysOnly()
+	if personality != nil {
+		query = query.Filter("Personality = ", personality)
+	}
+	if untweetedOnly {
+		query = query.Filter("LastTweetTime = ", time.Time{})
+	}
+	return query.Count(ctx)
 }
 
 func ReplaceFileID(ctx context.Context, oldFileUniqueID string, newFile *tgapi.TGFile) (*Inventory, error) {

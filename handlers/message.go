@@ -493,7 +493,7 @@ func commandStats(ctx context.Context, args []string) (string, error) {
 		go func(i int) {
 			defer wg.Done()
 			count, err := models.CountInventories(ctx, keys[i], false)
-			if err == nil {
+			if err == nil && count > 0 {
 				rs[i] = fmt.Sprintf("kg:%s %s: %d", ps[i].KGID, ps[i].CanonicalName, count)
 			}
 			errs[i] = err
@@ -510,13 +510,21 @@ func commandStats(ctx context.Context, args []string) (string, error) {
 	}
 
 	wg.Wait()
-	for _, err := range errs {
-		if err != nil {
-			return err.Error(), nil
+
+	out := strings.Builder{}
+	for i, r := range rs {
+		if errs[i] != nil {
+			return errs[i].Error(), nil
+		}
+		if r != "" {
+			out.WriteString(r)
+			out.WriteRune('\n')
 		}
 	}
 
-	return strings.Join(rs, "\n") + "\n\n" + fmt.Sprintf("Total: %d\nUntweeted: %d", ct, cut), nil
+	out.WriteString(fmt.Sprintf("\nTotal: %d\nUntweeted: %d", ct, cut))
+
+	return out.String(), nil
 }
 
 func commandSendMe(ctx context.Context, args []string, message *tgbotapi.Message) error {

@@ -45,6 +45,7 @@ func makeReplyMessage(message *tgbotapi.Message, reply string) *tgbotapi.Message
 	c := tgbotapi.NewMessage(message.Chat.ID, reply)
 	c.ReplyToMessageID = message.MessageID
 	c.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+	c.DisableWebPagePreview = true
 	return &c
 }
 
@@ -458,7 +459,6 @@ func commandQueryKG(ctx context.Context, args []string, message *tgbotapi.Messag
 
 	reply := makeReplyMessage(message, "```json\n"+encoded+"\n```")
 	reply.ParseMode = tgbotapi.ModeMarkdownV2
-	reply.DisableWebPagePreview = true
 	if inputName == name {
 		keyboard := tgbotapi.NewReplyKeyboard([]tgbotapi.KeyboardButton{tgbotapi.NewKeyboardButton(fmt.Sprintf("/n %s %s", name, id))})
 		keyboard.OneTimeKeyboard = true

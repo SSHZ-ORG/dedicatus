@@ -41,6 +41,7 @@ type Inventory struct {
 	FileSize int
 
 	TwitterMediaID string
+	LastTweetID    string
 	LastTweetTime  time.Time
 
 	ModelVersion int
@@ -71,7 +72,12 @@ func (i Inventory) ToString(ctx context.Context) (string, error) {
 		fileNameString = i.FileName + "\n"
 	}
 
-	return fmt.Sprintf("%sUniqueID: %s\n%x (%d bytes)\n[%s]", fileNameString, i.FileUniqueID, i.MD5Sum, i.FileSize, strings.Join(pns, ", ")), nil
+	lastTweetString := ""
+	if i.LastTweetID != "" {
+		lastTweetString = "\nLast Tweet: https://twitter.com/i/status/" + i.LastTweetID
+	}
+
+	return fmt.Sprintf("%sUniqueID: %s\n%x (%d bytes)\n[%s]%s", fileNameString, i.FileUniqueID, i.MD5Sum, i.FileSize, strings.Join(pns, ", "), lastTweetString), nil
 }
 
 func (i Inventory) SendToChat(ctx context.Context, chatID int64) error {
@@ -398,8 +404,9 @@ func SetTwitterMediaID(ctx context.Context, fileUniqueID, twitterMediaID string)
 	})
 }
 
-func UpdateLastTweetTime(ctx context.Context, fileUniqueID string) error {
+func UpdateLastTweetInfo(ctx context.Context, fileUniqueID, tweetID string) error {
 	_, err := readWriteInventory(ctx, fileUniqueID, func(ctx context.Context, i *Inventory) error {
+		i.LastTweetID = tweetID
 		i.LastTweetTime = time.Now()
 		return nil
 	})

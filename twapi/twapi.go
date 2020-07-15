@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/url"
 	"strings"
 	"sync"
@@ -72,7 +73,7 @@ func uploadInventory(ctx context.Context, api *anaconda.TwitterApi, i *models.In
 	return m.MediaIDString, nil
 }
 
-func sendInventoryToTwitter(ctx context.Context, api *anaconda.TwitterApi, i *models.Inventory) (string, error) {
+func postTweet(ctx context.Context, api *anaconda.TwitterApi, i *models.Inventory) (string, error) {
 	if i.TwitterMediaID == "" {
 		return "", errors.New("why are we sending not-uploaded inventory?")
 	}
@@ -97,8 +98,19 @@ func sendInventoryToTwitter(ctx context.Context, api *anaconda.TwitterApi, i *mo
 	return fmt.Sprintf("https://twitter.com/%s/status/%s", t.User.ScreenName, t.IdStr), nil
 }
 
-func pickRandomInventories(ctx context.Context) (*models.Inventory, error) {
-	is, err := models.RandomInventories(ctx, 3)
+const (
+	leastRecentProb        = 0.05
+	leastRecentOffsetRange = 50
+	standardPoolLimit      = 5
+)
+
+func pickRandomInventory(ctx context.Context) (*models.Inventory, error) {
+	if rand.Float32() < leastRecentProb {
+		log.Infof(ctx, "Won the lottery! Choosing something that was not tweeted recently...")
+		return models.PickLeastRecentTweetedInventory(ctx, rand.Intn(leastRecentOffsetRange))
+	}
+
+	is, err := models.RandomInventories(ctx, standardPoolLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +140,7 @@ func SendInventoryToTwitter(ctx context.Context, manualFileUniqueId string) (str
 	var err error
 
 	if manualFileUniqueId == "" {
-		i, err = pickRandomInventories(ctx)
+		i, err = pickRandomInventory(ctx)
 	} else {
 		i, err = models.GetInventory(ctx, manualFileUniqueId)
 	}
@@ -160,7 +172,7 @@ func SendInventoryToTwitter(ctx context.Context, manualFileUniqueId string) (str
 		}
 	}
 
-	return sendInventoryToTwitter(ctx, api, i)
+	return postTweet(ctx, api, i)
 }
 
 func FollowUser(ctx context.Context, screenName string) (userID string, err error) {

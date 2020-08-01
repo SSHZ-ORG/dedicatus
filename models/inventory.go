@@ -42,6 +42,7 @@ type Inventory struct {
 
 	TwitterMediaID string
 	LastTweetID    string
+	TweetIDs       []string
 	LastTweetTime  time.Time
 
 	ModelVersion int
@@ -407,6 +408,7 @@ func SetTwitterMediaID(ctx context.Context, fileUniqueID, twitterMediaID string)
 func UpdateLastTweetInfo(ctx context.Context, fileUniqueID, tweetID string) error {
 	_, err := readWriteInventory(ctx, fileUniqueID, func(ctx context.Context, i *Inventory) error {
 		i.LastTweetID = tweetID
+		i.TweetIDs = append(i.TweetIDs, tweetID)
 		i.LastTweetTime = time.Now()
 		return nil
 	})

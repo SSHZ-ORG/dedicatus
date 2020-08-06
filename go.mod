@@ -8,13 +8,13 @@ require (
 	github.com/dustin/go-jsonpointer v0.0.0-20160814072949-ba0abeacc3dc // indirect
 	github.com/dustin/gojson v0.0.0-20160307161227-2e71ec9dd5ad // indirect
 	github.com/garyburd/go-oauth v0.0.0-20180319155456-bca2e7f09a17 // indirect
-	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.0.0-rc1.0.20200524105246-38c2cb18eddd
+	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.0.0-rc1.0.20200723221353-2f7211a7085f
 	github.com/gojp/kana v0.1.0
 	github.com/gorilla/mux v1.7.4
 	github.com/qedus/nds v1.0.0
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/text v0.3.3
-	google.golang.org/api v0.29.0
+	google.golang.org/api v0.30.0
 	google.golang.org/appengine v1.6.6
 )
 

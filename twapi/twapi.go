@@ -120,13 +120,18 @@ func pickRandomInventory(ctx context.Context) (*models.Inventory, error) {
 		return nil, errors.New("received 0 random Inventories back")
 	}
 
+	// Choose the first Inventory that was never posted before.
+	// If all were posted before, choose the one that was least recently posted.
+	var li = is[0]
 	for _, i := range is {
 		if i.LastTweetTime.IsZero() {
 			return i, nil
 		}
+		if i.LastTweetTime.Before(li.LastTweetTime) {
+			li = i
+		}
 	}
-	// All are posted before, just return the first one.
-	return is[0], nil
+	return li, nil
 }
 
 func SendInventoryToTwitter(ctx context.Context, manualFileUniqueId string) (string, error) {

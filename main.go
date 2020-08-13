@@ -140,7 +140,7 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof(ctx, "%v", string(bytes))
+	log.Debugf(ctx, "%v", string(bytes))
 
 	if update.Message != nil {
 		ctx = tgapi.NewContext(ctx, update.Message.From)

@@ -60,7 +60,7 @@ func updateFileMetadataDefault(ctx context.Context, oldStorageKey string, i *Inv
 	}
 
 	sum := md5.Sum(b)
-	log.Infof(ctx, "File %s: %x (%d bytes)", fileUniqueID, sum, file.FileSize)
+	log.Debugf(ctx, "File %s: %x (%d bytes)", fileUniqueID, sum, file.FileSize)
 
 	err = nds.RunInTransaction(ctx, func(ctx context.Context) error {
 		// Get again so we don't race.

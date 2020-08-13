@@ -5,7 +5,7 @@ cron:
 
   - description: "Post a Random Inventory to Twitter"
     url: /admin/postTweet
-    schedule: every 2 hours synchronized
+    schedule: every 90 minutes synchronized
     timezone: Asia/Tokyo
     retry_parameters:
       min_backoff_seconds: 10

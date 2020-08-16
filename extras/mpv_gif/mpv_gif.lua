@@ -46,6 +46,10 @@ local function split(s, delimiter)
     return result
 end
 
+local function starts_with(str, start)
+    return str:sub(1, #start) == start
+end
+
 local function construct_filter(in_filter, max_aspect)
     local filters = {}
 
@@ -167,6 +171,30 @@ local function construct_input_and_seeking_args(input_file_path)
     return table.concat(args, " ")
 end
 
+local function detect_edl_path(stream_path)
+    if starts_with(stream_path, "edl://") then
+        stream_path = stream_path:sub(7)
+    end
+
+    -- This is actually not correct, but YouTube URLs never contain this so...
+    local segments = split(stream_path, ";")
+
+    -- TODO: Handle multiple streams.
+    for i, segment in ipairs(segments) do
+        if not starts_with(segment, "!") then
+            -- This is a file path.
+            if starts_with(segment, "%") then
+                -- This is the EDL style escape for comma.
+                local len_str = string.match(segment, "%%(%d+)%%")
+                local len = tonumber(len_str)
+                return segment:sub(2 + #len_str + 1, 2 + #len_str + 1 + len - 1)
+            else
+                return split(segment, ",")[1]
+            end
+        end
+    end
+end
+
 local function make_gif_internal(use_mpeg4)
     if start_time ~= -1 and end_time ~= -1 and start_time >= end_time then
         mp.osd_message("Invalid start/end time.")
@@ -175,7 +203,15 @@ local function make_gif_internal(use_mpeg4)
 
     mp.osd_message("Creating GIF.")
 
-    local input_file_path = utils.join_path(mp.get_property("working-directory"), mp.get_property("path"))
+    local input_file_path = ""
+    local stream_path = mp.get_property("stream-open-filename")
+    if starts_with(stream_path, "edl://") then
+        -- EDL. Likely ytdl or something. Attempt to parse it ourselves.
+        input_file_path = detect_edl_path(stream_path)
+    else
+        input_file_path = utils.join_path(mp.get_property("working-directory"), mp.get_property("path"))
+    end
+
     local input_and_seeking_args = construct_input_and_seeking_args(input_file_path)
 
     local containing_path = utils.split_path(input_file_path)

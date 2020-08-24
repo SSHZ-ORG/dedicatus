@@ -18,9 +18,17 @@ local is_windows = package.config:sub(1, 1) == "\\"
 
 local function esc(s)
     if is_windows then
-        return string.gsub(s, "\"", "\"\"")
+        return s:gsub("\"", "\"\"")
     else
-        return string.gsub(s, "'", "'\\''")
+        return s:gsub("'", "'\\''")
+    end
+end
+
+local function filename_esc(s)
+    if is_windows then
+        return s:gsub("%?", "_")
+    else
+        return s
     end
 end
 
@@ -217,7 +225,7 @@ local function make_gif_internal(use_mpeg4)
     local containing_path = utils.split_path(input_file_path)
     local input_file_name_no_ext = mp.get_property("filename/no-ext")
 
-    local output_filename = detect_dvd_bd_prefix(containing_path) .. string.format('%s_%s_%s', input_file_name_no_ext, start_time, end_time)
+    local output_filename = detect_dvd_bd_prefix(containing_path) .. string.format('%s_%s_%s', filename_esc(input_file_name_no_ext), start_time, end_time)
     local output_file_path
 
     if use_mpeg4 then

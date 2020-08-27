@@ -43,7 +43,7 @@ type Inventory struct {
 	TwitterMediaID string
 	LastTweetID    string
 	TweetIDs       []string
-	LastTweetTime  time.Time
+	LastTweetTime  time.Time // If this is in the future, the Inventory won't be picked randomly.
 
 	ModelVersion int
 }

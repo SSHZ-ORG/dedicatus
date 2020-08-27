@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"math/rand"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/SSHZ-ORG/dedicatus/config"
@@ -102,7 +104,15 @@ const (
 	leastRecentProb        = 0.05
 	leastRecentOffsetRange = 50
 	standardPoolLimit      = 5
+	standardPoolStepProb   = 0.9
 )
+
+func isRandomlyTweetable(i *models.Inventory) bool {
+	if i.LastTweetTime.After(time.Now()) {
+		return false
+	}
+	return true
+}
 
 func pickRandomInventory(ctx context.Context) (*models.Inventory, error) {
 	if rand.Float32() < leastRecentProb {
@@ -110,28 +120,35 @@ func pickRandomInventory(ctx context.Context) (*models.Inventory, error) {
 		return models.PickLeastRecentTweetedInventory(ctx, rand.Intn(leastRecentOffsetRange))
 	}
 
-	is, err := models.RandomInventories(ctx, standardPoolLimit)
-	if err != nil {
+	var is []*models.Inventory
+	if ris, err := models.RandomInventories(ctx, standardPoolLimit); err != nil {
 		return nil, err
+	} else {
+		for _, i := range ris {
+			if isRandomlyTweetable(i) {
+				is = append(is, i)
+			}
+		}
 	}
 
 	if len(is) == 0 {
 		// Likely it's Cache Miss. Return error to let cron try again.
-		return nil, errors.New("received 0 random Inventories back")
+		return nil, errors.New("received 0 randomly tweetable Inventories back")
 	}
 
-	// Choose the first Inventory that was never posted before.
-	// If all were posted before, choose the one that was least recently posted.
-	var li = is[0]
+	sort.Slice(is, func(i, j int) bool {
+		return is[i].LastTweetTime.Before(is[j].LastTweetTime)
+	})
+	if is[0].LastTweetTime.IsZero() {
+		// The first one is never posted before. Choose it.
+		return is[0], nil
+	}
 	for _, i := range is {
-		if i.LastTweetTime.IsZero() {
+		if rand.Float32() < standardPoolStepProb {
 			return i, nil
 		}
-		if i.LastTweetTime.Before(li.LastTweetTime) {
-			li = i
-		}
 	}
-	return li, nil
+	return is[len(is)-1], nil
 }
 
 func SendInventoryToTwitter(ctx context.Context, manualFileUniqueId string) (string, error) {

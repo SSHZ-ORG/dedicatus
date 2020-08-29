@@ -15,6 +15,7 @@ local end_time = -1
 
 -- shell escape
 local is_windows = package.config:sub(1, 1) == "\\"
+local home_path = os.getenv("HOME") or os.getenv("USERPROFILE")
 
 local function esc(s)
     if is_windows then
@@ -108,7 +109,7 @@ local function detect_output_file_path(containing_path, filename, ext)
     local error_msg = string.format("Failed to write to preferred output (%s), writing to $HOME.", err)
     mp.osd_message(error_msg)
     msg.info(error_msg)
-    return utils.join_path(os.getenv("HOME"), filename_with_ext)
+    return utils.join_path(home_path, filename_with_ext)
 end
 
 local function detect_dvd_bd_prefix(containing_path)

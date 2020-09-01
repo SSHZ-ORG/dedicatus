@@ -111,6 +111,9 @@ func isRandomlyTweetable(i *models.Inventory) bool {
 	if i.LastTweetTime.After(time.Now()) {
 		return false
 	}
+	if i.FileSize == 0 || i.FileSize > fileSizeLimit {
+		return false
+	}
 	return true
 }
 
@@ -174,10 +177,7 @@ func SendInventoryToTwitter(ctx context.Context, manualFileUniqueId string) (str
 
 	if i.FileSize > fileSizeLimit {
 		log.Debugf(ctx, "%s is too large for Twitter.", i.FileUniqueID)
-		if manualFileUniqueId != "" {
-			return "", errors.New("file too large")
-		}
-		return "", nil
+		return "", errors.New("file too large")
 	}
 
 	if i.TwitterMediaID == "" {

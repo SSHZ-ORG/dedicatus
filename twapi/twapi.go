@@ -17,13 +17,16 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/urlfetch"
 )
 
 func getClient(ctx context.Context) *anaconda.TwitterApi {
 	if config.TwitterAccessToken == "" {
 		return nil
 	}
-	return anaconda.NewTwitterApiWithCredentials(config.TwitterAccessToken, config.TwitterAccessTokenSecret, config.TwitterAPIKey, config.TwitterAPIKeySecret)
+	api := anaconda.NewTwitterApiWithCredentials(config.TwitterAccessToken, config.TwitterAccessTokenSecret, config.TwitterAPIKey, config.TwitterAPIKeySecret)
+	api.HttpClient = urlfetch.Client(ctx)
+	return api
 }
 
 const fileSizeLimit = 15 * 1024 * 1024

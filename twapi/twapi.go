@@ -103,8 +103,8 @@ func postTweet(ctx context.Context, api *anaconda.TwitterApi, i *models.Inventor
 const (
 	leastRecentProb        = 0.05
 	leastRecentOffsetRange = 50
-	standardPoolLimit      = 5
-	standardPoolStepProb   = 0.9
+	standardPoolLimit      = 10
+	standardPoolStepProb   = 0.8
 )
 
 func isRandomlyTweetable(i *models.Inventory) bool {
@@ -142,10 +142,6 @@ func pickRandomInventory(ctx context.Context) (*models.Inventory, error) {
 	sort.Slice(is, func(i, j int) bool {
 		return is[i].LastTweetTime.Before(is[j].LastTweetTime)
 	})
-	if is[0].LastTweetTime.IsZero() {
-		// The first one is never posted before. Choose it.
-		return is[0], nil
-	}
 	for _, i := range is {
 		if rand.Float32() < standardPoolStepProb {
 			return i, nil

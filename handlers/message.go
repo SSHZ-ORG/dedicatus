@@ -474,9 +474,14 @@ func commandStats(ctx context.Context, args []string) (string, error) {
 		return errorMessageNotAdmin, nil
 	}
 
-	keys, err := models.ListAllPersonalities(ctx)
-	if err != nil {
-		return "", err
+	var keys []*datastore.Key
+	var err error
+
+	if len(args) > 1 {
+		keys, err = models.ListAllPersonalities(ctx)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	ps, err := models.GetPersonalities(ctx, keys)

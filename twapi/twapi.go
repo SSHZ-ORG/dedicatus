@@ -11,10 +11,13 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/SSHZ-ORG/dedicatus/config"
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
+	"github.com/SSHZ-ORG/dedicatus/utils"
+	"github.com/dustin/go-humanize"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/urlfetch"
@@ -78,20 +81,36 @@ func uploadInventory(ctx context.Context, api *anaconda.TwitterApi, i *models.In
 	return m.MediaIDString, nil
 }
 
+func formatTweetText(ctx context.Context, i *models.Inventory) (string, error) {
+	lines, err := i.PersonalityNames(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	for i, pn := range lines {
+		lines[i] = "#" + pn
+	}
+
+	tweetInfo := "New!"
+	if i.LastTweetID != "" {
+		tweetInfo = fmt.Sprintf("%s tweet, last was on %s JST", humanize.Ordinal(len(i.TweetIDs)+1), civil.DateOf(i.LastTweetTime.In(utils.JST())).String())
+	}
+	lines = append(lines, fmt.Sprintf("ID: %s (%s)", i.FileUniqueID, tweetInfo))
+
+	return strings.Join(lines, "\n"), nil
+}
+
 func postTweet(ctx context.Context, api *anaconda.TwitterApi, i *models.Inventory) (string, error) {
 	if i.TwitterMediaID == "" {
 		return "", errors.New("why are we sending not-uploaded inventory?")
 	}
 
-	pns, err := i.PersonalityNames(ctx)
+	text, err := formatTweetText(ctx, i)
 	if err != nil {
 		return "", err
 	}
 
-	for i, pn := range pns {
-		pns[i] = "#" + pn
-	}
-	t, err := api.PostTweet(strings.Join(pns, "\n"), url.Values{"media_ids": []string{i.TwitterMediaID}})
+	t, err := api.PostTweet(text, url.Values{"media_ids": []string{i.TwitterMediaID}})
 	if err != nil {
 		return "", err
 	}
@@ -106,8 +125,8 @@ func postTweet(ctx context.Context, api *anaconda.TwitterApi, i *models.Inventor
 const (
 	leastRecentProb        = 0.05
 	leastRecentOffsetRange = 50
-	standardPoolLimit      = 10
-	standardPoolStepProb   = 0.8
+	standardPoolLimit      = 5
+	standardPoolStepProb   = 0.9
 )
 
 func isRandomlyTweetable(i *models.Inventory) bool {

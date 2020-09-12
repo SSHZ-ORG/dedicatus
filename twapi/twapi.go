@@ -174,6 +174,7 @@ func SendInventoryToTwitter(ctx context.Context, manualFileUniqueId string) (str
 		// Twitter bot not enabled, return.
 		return "", nil
 	}
+	defer api.Close()
 
 	var i *models.Inventory
 	var err error
@@ -213,6 +214,7 @@ func SendInventoryToTwitter(ctx context.Context, manualFileUniqueId string) (str
 
 func FollowUser(ctx context.Context, screenName string) (userID string, err error) {
 	api := getClient(ctx)
+	defer api.Close()
 
 	u, err := api.FollowUser(screenName)
 	if err != nil {

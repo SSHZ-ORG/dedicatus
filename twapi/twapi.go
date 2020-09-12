@@ -93,9 +93,12 @@ func formatTweetText(ctx context.Context, i *models.Inventory) (string, error) {
 
 	tweetInfo := "New!"
 	if i.LastTweetID != "" {
-		tweetInfo = fmt.Sprintf("%s tweet, last was on %s JST", humanize.Ordinal(len(i.TweetIDs)+1), civil.DateOf(i.LastTweetTime.In(utils.JST())).String())
+		tweetInfo = fmt.Sprintf("%s tweet", humanize.Ordinal(len(i.TweetIDs)+1))
+		if !i.LastTweetTime.IsZero() {
+			tweetInfo += fmt.Sprintf(", last was on %s JST", civil.DateOf(i.LastTweetTime.In(utils.JST())).String())
+		}
 	}
-	lines = append(lines, fmt.Sprintf("ID: %s (%s)", i.FileUniqueID, tweetInfo))
+	lines = append(lines, fmt.Sprintf("\nID: %s (%s)", i.FileUniqueID, tweetInfo))
 
 	return strings.Join(lines, "\n"), nil
 }

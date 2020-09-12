@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"cloud.google.com/go/civil"
@@ -56,22 +55,13 @@ func uploadInventory(ctx context.Context, api *anaconda.TwitterApi, i *models.In
 		return "", err
 	}
 
-	wg := sync.WaitGroup{}
-	wg.Add(len(chunks))
-	errs := make([]error, len(chunks))
-	for i := range chunks {
-		go func(i int) {
-			defer wg.Done()
-			errs[i] = api.UploadVideoAppend(media.MediaIDString, i, base64.StdEncoding.EncodeToString(chunks[i]))
-		}(i)
-	}
-	wg.Wait()
-
-	for _, err := range errs {
+	for i, c := range chunks {
+		err = api.UploadVideoAppend(media.MediaIDString, i, base64.StdEncoding.EncodeToString(c))
 		if err != nil {
 			return "", err
 		}
 	}
+
 	m, err := api.UploadVideoFinalize(media.MediaIDString)
 	if err != nil {
 		return "", err

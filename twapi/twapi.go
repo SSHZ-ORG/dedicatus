@@ -195,7 +195,7 @@ func SendInventoryToTwitter(ctx context.Context, manualFileUniqueId string) (str
 		return "", errors.New("file too large")
 	}
 
-	if i.TwitterMediaID == "" {
+	if i.TwitterMediaID == "" || i.LastTweetID == "" {
 		log.Debugf(ctx, "We never upload this to Twitter. Uploading now.")
 
 		mediaID, err := uploadInventory(ctx, api, i)

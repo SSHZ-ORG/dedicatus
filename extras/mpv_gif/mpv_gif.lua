@@ -64,7 +64,7 @@ local function construct_filter(in_filter, max_aspect)
 
     if mp.get_property("deinterlace") == "yes" then
         -- If we are using deinterlace, let ffmpeg do it too.
-        table.insert(filters, "yadif")
+        table.insert(filters, "yadif=1")
     end
 
     -- These aspects are after filter / manual aspect ratio change, but before output scaling (for window).

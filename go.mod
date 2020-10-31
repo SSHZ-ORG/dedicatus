@@ -1,8 +1,8 @@
 module github.com/SSHZ-ORG/dedicatus
 
 require (
-	cloud.google.com/go v0.65.0
-	cloud.google.com/go/storage v1.11.0
+	cloud.google.com/go v0.70.0
+	cloud.google.com/go/storage v1.12.0
 	github.com/ChimeraCoder/anaconda v2.0.1-0.20181014153429-fba449f7b405+incompatible
 	github.com/ChimeraCoder/tokenbucket v0.0.0-20131201223612-c5a927568de7 // indirect
 	github.com/azr/backoff v0.0.0-20160115115103-53511d3c7330 // indirect
@@ -14,10 +14,10 @@ require (
 	github.com/gojp/kana v0.1.0
 	github.com/gorilla/mux v1.8.0
 	github.com/qedus/nds v1.0.0
-	golang.org/x/net v0.0.0-20200904194848-62affa334b73
-	golang.org/x/text v0.3.3
-	google.golang.org/api v0.31.0
-	google.golang.org/appengine v1.6.6
+	golang.org/x/net v0.0.0-20201031054903-ff519b6c9102
+	golang.org/x/text v0.3.4
+	google.golang.org/api v0.34.0
+	google.golang.org/appengine v1.6.7
 )
 
 go 1.11

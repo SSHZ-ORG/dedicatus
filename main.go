@@ -142,6 +142,8 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 
 	log.Debugf(ctx, "%v", string(bytes))
 
+	var response tgbotapi.Chattable
+
 	if update.Message != nil {
 		ctx = tgapi.NewContext(ctx, update.Message.From)
 		err = handlers.HandleMessage(ctx, update)
@@ -154,12 +156,16 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 
 	if update.InlineQuery != nil {
 		ctx = tgapi.NewContext(ctx, update.InlineQuery.From)
-		err = handlers.HandleInlineQuery(ctx, update)
+		response, err = handlers.HandleInlineQuery(ctx, update.InlineQuery)
 	}
 
 	if update.ChosenInlineResult != nil {
 		ctx = tgapi.NewContext(ctx, update.ChosenInlineResult.From)
 		err = handlers.HandleChosenInlineResult(ctx, update)
+	}
+
+	if response != nil {
+		err = tgbotapi.WriteToHTTPResponse(w, response)
 	}
 
 	if err != nil {

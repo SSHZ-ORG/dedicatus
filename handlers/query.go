@@ -20,17 +20,7 @@ func constructInlineResults(inventories []*models.Inventory) []interface{} {
 	return results
 }
 
-func HandleInlineQuery(ctx context.Context, update tgbotapi.Update) error {
-	response, err := prepareResponse(ctx, update.InlineQuery)
-	if err != nil {
-		return err
-	}
-
-	_, err = tgapi.BotFromContext(ctx).Request(response)
-	return err
-}
-
-func prepareResponse(ctx context.Context, query *tgbotapi.InlineQuery) (*tgbotapi.InlineConfig, error) {
+func HandleInlineQuery(ctx context.Context, query *tgbotapi.InlineQuery) (*tgbotapi.InlineConfig, error) {
 	qs := strings.Fields(query.Query)
 
 	// Determine QueryMode

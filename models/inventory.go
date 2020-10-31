@@ -13,6 +13,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/scheduler"
 	"github.com/SSHZ-ORG/dedicatus/scheduler/metadatamode"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
+	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
@@ -81,13 +82,12 @@ func (i Inventory) ToString(ctx context.Context) (string, error) {
 	return fmt.Sprintf("%sUniqueID: %s\n%x (%d bytes)\n[%s]%s", fileNameString, i.FileUniqueID, i.MD5Sum, i.FileSize, strings.Join(pns, ", "), lastTweetString), nil
 }
 
-func (i Inventory) SendToChat(ctx context.Context, chatID int64) error {
+func (i Inventory) SendToChat(ctx context.Context, chatID int64) (tgbotapi.Chattable, error) {
 	caption, err := i.ToString(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, err = tgapi.BotFromContext(ctx).Send(tgapi.MakeFileable(chatID, i.FileID, i.FileType, caption))
-	return err
+	return tgapi.MakeFileable(chatID, i.FileID, i.FileType, caption), nil
 }
 
 const inventoryCurrentModelVersion = 1

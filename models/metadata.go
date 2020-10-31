@@ -90,7 +90,8 @@ func updateFileMetadataDefault(ctx context.Context, oldStorageKey string, i *Inv
 	}
 
 	if config.ChannelID != 0 {
-		_ = i.SendToChat(ctx, config.ChannelID)
+		c, _ := i.SendToChat(ctx, config.ChannelID)
+		_, _ = tgapi.BotFromContext(ctx).Send(c)
 	}
 	return nil
 }

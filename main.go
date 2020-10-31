@@ -146,12 +146,7 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 
 	if update.Message != nil {
 		ctx = tgapi.NewContext(ctx, update.Message.From)
-		err = handlers.HandleMessage(ctx, update)
-		// Internal errors from this handler should not be retried - log and tell TG we are good.
-		if err != nil {
-			log.Errorf(ctx, "%v", err)
-			return
-		}
+		response, err = handlers.HandleMessage(ctx, update.Message)
 	}
 
 	if update.InlineQuery != nil {

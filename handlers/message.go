@@ -15,6 +15,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
 )
 
 const (
@@ -36,7 +37,7 @@ var commandMap = map[string]func(ctx context.Context, args []string) (string, er
 	"/ukt":   commandUnknownTwitterPersonalities,
 }
 
-var complexCommandMap = map[string]func(ctx context.Context, args []string, message *tgbotapi.Message) error{
+var complexCommandMap = map[string]func(ctx context.Context, args []string, message *tgbotapi.Message) (tgbotapi.Chattable, error){
 	"/kg":     commandQueryKG,
 	"/sendme": commandSendMe,
 }
@@ -49,47 +50,41 @@ func makeReplyMessage(message *tgbotapi.Message, reply string) *tgbotapi.Message
 	return &c
 }
 
-func HandleMessage(ctx context.Context, update tgbotapi.Update) error {
-	bot := tgapi.BotFromContext(ctx)
+func HandleMessage(ctx context.Context, message *tgbotapi.Message) (tgbotapi.Chattable, error) {
+	var response tgbotapi.Chattable
+	var err error
 
-	message := update.Message
 	if message.Animation != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Animation != nil) {
-		return handleAnimation(ctx, message)
+		response, err = handleAnimation(ctx, message)
 	}
 	if message.Video != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Video != nil) {
-		return handleVideo(ctx, message)
+		response, err = handleVideo(ctx, message)
 	}
 
 	if strings.HasPrefix(message.Text, "/") {
-		replyMessage := ""
-		var err error
-
 		args := strings.Fields(message.Text)
 
 		if handler, ok := commandMap[args[0]]; ok {
-			replyMessage, err = handler(ctx, args)
+			res := ""
+			res, err = handler(ctx, args)
+			response = makeReplyMessage(message, res)
 		} else if handler, ok := complexCommandMap[args[0]]; ok {
-			err = handler(ctx, args, message)
+			response, err = handler(ctx, args, message)
 		} else {
-			replyMessage = "Command not recognized."
-		}
-
-		if err != nil {
-			reply := makeReplyMessage(message, "Your action triggered an internal server error.")
-			_, _ = bot.Send(reply) // Fire and forget
-			return err
-		}
-
-		if replyMessage != "" {
-			_, err := bot.Send(makeReplyMessage(message, replyMessage))
-			return err
+			response = makeReplyMessage(message, "Command not recognized.")
 		}
 	}
 
-	return nil
+	if err != nil {
+		// Don't cause retry. Log and respond that we have an internal error.
+		log.Errorf(ctx, "%v", err)
+		response = makeReplyMessage(message, "Your action triggered an internal server error.")
+	}
+
+	return response, nil
 }
 
-func handleAnimation(ctx context.Context, message *tgbotapi.Message) error {
+func handleAnimation(ctx context.Context, message *tgbotapi.Message) (tgbotapi.Chattable, error) {
 	animation := message.Animation
 	if message.ReplyToMessage != nil && message.ReplyToMessage.Animation != nil {
 		animation = message.ReplyToMessage.Animation
@@ -99,7 +94,7 @@ func handleAnimation(ctx context.Context, message *tgbotapi.Message) error {
 	return handleTGFile(ctx, message, tgFile)
 }
 
-func handleVideo(ctx context.Context, message *tgbotapi.Message) error {
+func handleVideo(ctx context.Context, message *tgbotapi.Message) (tgbotapi.Chattable, error) {
 	video := message.Video
 	if message.ReplyToMessage != nil && message.ReplyToMessage.Video != nil {
 		video = message.ReplyToMessage.Video
@@ -109,7 +104,7 @@ func handleVideo(ctx context.Context, message *tgbotapi.Message) error {
 	return handleTGFile(ctx, message, tgFile)
 }
 
-func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *tgapi.TGFile) error {
+func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *tgapi.TGFile) (tgbotapi.Chattable, error) {
 	caption := message.Caption
 	if message.ReplyToMessage != nil {
 		caption = message.Text
@@ -132,7 +127,7 @@ func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *tgapi.
 			replyMessages = append(replyMessages, "Hash conflict!")
 			allowUpdate = false
 		} else if err != datastore.ErrNoSuchEntity {
-			return err
+			return nil, err
 		}
 	}
 
@@ -143,7 +138,7 @@ func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *tgapi.
 
 		s, err := i.ToString(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		replyMessages = append(replyMessages, "\nMatched to:\n"+s)
 	} else {
@@ -156,24 +151,23 @@ func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *tgapi.
 			// Update Inventory, if instructed
 			resp, err := handleTGFileCaption(ctx, tgFile, caption)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			replyMessages = append(replyMessages, "\n"+resp)
 		} else {
 			if i != nil && i.FileName == "" && tgFile.FileName != "" {
 				// Existing Inventory but we don't know FileName, and we know FileName now. Backfill the field.
 				if err := models.OverrideFileName(ctx, i.FileUniqueID, tgFile.FileName); err != nil {
-					return err
+					return nil, err
 				}
 			}
 		}
 	}
 
 	if len(replyMessages) > 0 {
-		_, err := tgapi.BotFromContext(ctx).Send(makeReplyMessage(message, strings.Join(replyMessages, "\n")))
-		return err
+		return makeReplyMessage(message, strings.Join(replyMessages, "\n")), nil
 	}
-	return nil
+	return nil, nil
 }
 
 func handleTGFileCaption(ctx context.Context, tgFile *tgapi.TGFile, caption string) (string, error) {
@@ -438,23 +432,19 @@ func commandManageContributors(ctx context.Context, args []string) (string, erro
 	return "Contributors updated", nil
 }
 
-func commandQueryKG(ctx context.Context, args []string, message *tgbotapi.Message) error {
-	bot := tgapi.BotFromContext(ctx)
-
+func commandQueryKG(ctx context.Context, args []string, message *tgbotapi.Message) (tgbotapi.Chattable, error) {
 	if !tgapi.IsAdmin(ctx) {
-		_, err := bot.Send(makeReplyMessage(message, errorMessageNotAdmin))
-		return err
+		return makeReplyMessage(message, errorMessageNotAdmin), nil
 	}
 
 	if len(args) != 2 {
-		_, err := bot.Send(makeReplyMessage(message, "Usage:\n/kg <Query>\nExample: /kg 井口裕香"))
-		return err
+		return makeReplyMessage(message, "Usage:\n/kg <Query>\nExample: /kg 井口裕香"), nil
 	}
 
 	inputName := args[1]
 	encoded, id, name, err := kgapi.GetKGQueryResult(ctx, inputName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	reply := makeReplyMessage(message, "```json\n"+encoded+"\n```")
@@ -465,8 +455,7 @@ func commandQueryKG(ctx context.Context, args []string, message *tgbotapi.Messag
 		keyboard.Selective = true
 		reply.ReplyMarkup = keyboard
 	}
-	_, err = bot.Send(reply)
-	return err
+	return reply, nil
 }
 
 func commandStats(ctx context.Context, args []string) (string, error) {
@@ -532,21 +521,17 @@ func commandStats(ctx context.Context, args []string) (string, error) {
 	return out.String(), nil
 }
 
-func commandSendMe(ctx context.Context, args []string, message *tgbotapi.Message) error {
-	bot := tgapi.BotFromContext(ctx)
-
+func commandSendMe(ctx context.Context, args []string, message *tgbotapi.Message) (tgbotapi.Chattable, error) {
 	if len(args) != 2 {
-		_, err := bot.Send(makeReplyMessage(message, "Usage:\n/sendme <FileUniqueID>"))
-		return err
+		return makeReplyMessage(message, "Usage:\n/sendme <FileUniqueID>"), nil
 	}
 
 	i, err := models.GetInventory(ctx, args[1])
 	if err != nil {
 		if err == datastore.ErrNoSuchEntity {
-			_, err := bot.Send(makeReplyMessage(message, "Unknown inventory"))
-			return err
+			return makeReplyMessage(message, "Unknown inventory"), nil
 		}
-		return err
+		return nil, err
 	}
 
 	return i.SendToChat(ctx, message.Chat.ID)

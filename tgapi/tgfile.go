@@ -17,7 +17,7 @@ type TGFile struct {
 	FileType string
 }
 
-func TGFileFromChatAnimation(animation *tgbotapi.ChatAnimation) *TGFile {
+func TGFileFromChatAnimation(animation *tgbotapi.Animation) *TGFile {
 	return &TGFile{
 		FileID:       animation.FileID,
 		FileUniqueID: animation.FileUniqueID,

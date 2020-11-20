@@ -1,0 +1,13 @@
+syntax = "proto2";
+package dedicatus.protoconf.pb;
+
+option go_package = "github.com/SSHZ-ORG/dedicatus/protoconf/pb";
+
+message Protoconf {
+    optional uint32 inline_query_cache_time_sec = 1 [default = 0];
+
+    optional float twapi_least_recent_pool_probability = 2 [default = 0.05];
+    optional uint32 twapi_least_recent_pool_offset_range = 3 [default = 50];
+    optional uint32 twapi_standard_pool_limit = 4 [default = 5];
+    optional float twapi_standard_pool_step_probability = 5 [default = 0.9];
+}

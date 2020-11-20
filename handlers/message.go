@@ -8,10 +8,13 @@ import (
 
 	"github.com/SSHZ-ORG/dedicatus/kgapi"
 	"github.com/SSHZ-ORG/dedicatus/models"
+	"github.com/SSHZ-ORG/dedicatus/protoconf"
+	"github.com/SSHZ-ORG/dedicatus/protoconf/pb"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/SSHZ-ORG/dedicatus/twapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
@@ -24,17 +27,18 @@ const (
 )
 
 var commandMap = map[string]func(ctx context.Context, args []string) (string, error){
-	"/start": commandStart,
-	"/me":    commandUserInfo,
-	"/n":     commandCreatePersonality,
-	"/s":     commandFindPersonality,
-	"/u":     commandUpdatePersonalityNickname,
-	"/a":     commandEditAlias,
-	"/c":     commandManageContributors,
-	"/stats": commandStats,
-	"/tweet": commandTweet,
-	"/fo":    commandUpdatePersonalityTwitterUserID,
-	"/ukt":   commandUnknownTwitterPersonalities,
+	"/start":  commandStart,
+	"/me":     commandUserInfo,
+	"/n":      commandCreatePersonality,
+	"/s":      commandFindPersonality,
+	"/u":      commandUpdatePersonalityNickname,
+	"/a":      commandEditAlias,
+	"/c":      commandManageContributors,
+	"/stats":  commandStats,
+	"/tweet":  commandTweet,
+	"/fo":     commandUpdatePersonalityTwitterUserID,
+	"/ukt":    commandUnknownTwitterPersonalities,
+	"/config": commandConfig,
 }
 
 var complexCommandMap = map[string]func(ctx context.Context, args []string, message *tgbotapi.Message) (tgbotapi.Chattable, error){
@@ -634,4 +638,30 @@ func commandUnknownTwitterPersonalities(ctx context.Context, args []string) (str
 		return "(empty)", nil
 	}
 	return strings.Join(os, ", "), nil
+}
+
+func commandConfig(ctx context.Context, args []string) (string, error) {
+	if !tgapi.IsAdmin(ctx) {
+		return errorMessageNotAdmin, nil
+	}
+
+	var c *pb.Protoconf
+	var err error
+
+	if len(args) == 1 {
+		c, err = protoconf.GetConf(ctx)
+	} else if len(args) == 3 {
+		c, err = protoconf.EditConf(ctx, args[1], args[2])
+	} else {
+		return "Invalid command", nil
+	}
+
+	if err != nil {
+		return err.Error(), nil
+	}
+	m := proto.MarshalTextString(c)
+	if m == "" {
+		return "(empty)", nil
+	}
+	return m, nil
 }

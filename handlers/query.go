@@ -6,6 +6,7 @@ import (
 
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/models/sortmode"
+	"github.com/SSHZ-ORG/dedicatus/protoconf"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/net/context"
@@ -71,10 +72,14 @@ func HandleInlineQuery(ctx context.Context, query *tgbotapi.InlineQuery) (*tgbot
 		return nil, err
 	}
 
+	conf, err := protoconf.GetConf(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return &tgbotapi.InlineConfig{
 		InlineQueryID: query.ID,
 		Results:       constructInlineResults(inventories),
 		NextOffset:    nextCursor,
-		CacheTime:     120,
+		CacheTime:     int(conf.GetInlineQueryCacheTimeSec()),
 	}, nil
 }

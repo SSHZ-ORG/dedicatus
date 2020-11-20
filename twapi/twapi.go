@@ -14,6 +14,7 @@ import (
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/SSHZ-ORG/dedicatus/config"
 	"github.com/SSHZ-ORG/dedicatus/models"
+	"github.com/SSHZ-ORG/dedicatus/protoconf"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/dustin/go-humanize"
@@ -118,13 +119,6 @@ func postTweet(ctx context.Context, api *anaconda.TwitterApi, i *models.Inventor
 	return fmt.Sprintf("https://twitter.com/%s/status/%s", t.User.ScreenName, t.IdStr), nil
 }
 
-const (
-	leastRecentProb        = 0.05
-	leastRecentOffsetRange = 50
-	standardPoolLimit      = 5
-	standardPoolStepProb   = 0.9
-)
-
 func isRandomlyTweetable(i *models.Inventory) bool {
 	if i.LastTweetTime.After(time.Now()) {
 		return false
@@ -136,13 +130,18 @@ func isRandomlyTweetable(i *models.Inventory) bool {
 }
 
 func pickRandomInventory(ctx context.Context) (*models.Inventory, error) {
-	if rand.Float32() < leastRecentProb {
+	conf, err := protoconf.GetConf(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if rand.Float32() < conf.GetTwapiLeastRecentPoolProbability() {
 		log.Infof(ctx, "Won the lottery! Choosing something that was not tweeted recently...")
-		return models.PickLeastRecentTweetedInventory(ctx, rand.Intn(leastRecentOffsetRange))
+		return models.PickLeastRecentTweetedInventory(ctx, rand.Intn(int(conf.GetTwapiLeastRecentPoolOffsetRange())))
 	}
 
 	var is []*models.Inventory
-	if ris, err := models.RandomInventories(ctx, standardPoolLimit); err != nil {
+	if ris, err := models.RandomInventories(ctx, int(conf.GetTwapiStandardPoolLimit())); err != nil {
 		return nil, err
 	} else {
 		for _, i := range ris {
@@ -161,11 +160,11 @@ func pickRandomInventory(ctx context.Context) (*models.Inventory, error) {
 		return is[i].LastTweetTime.Before(is[j].LastTweetTime)
 	})
 	for _, i := range is {
-		if rand.Float32() < standardPoolStepProb {
+		if rand.Float32() < conf.GetTwapiStandardPoolStepProbability() {
 			return i, nil
 		}
 	}
-	return is[len(is)-1], nil
+	return is[0], nil
 }
 
 func SendInventoryToTwitter(ctx context.Context, manualFileUniqueId string) (string, error) {

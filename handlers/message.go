@@ -6,10 +6,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/SSHZ-ORG/dedicatus/dctx/protoconf"
+	"github.com/SSHZ-ORG/dedicatus/dctx/protoconf/pb"
 	"github.com/SSHZ-ORG/dedicatus/kgapi"
 	"github.com/SSHZ-ORG/dedicatus/models"
-	"github.com/SSHZ-ORG/dedicatus/protoconf"
-	"github.com/SSHZ-ORG/dedicatus/protoconf/pb"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/SSHZ-ORG/dedicatus/twapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
@@ -648,12 +648,23 @@ func commandConfig(ctx context.Context, args []string) (string, error) {
 	var c *pb.Protoconf
 	var err error
 
-	if len(args) == 1 {
-		c, err = protoconf.GetConf(ctx)
-	} else if len(args) == 3 {
-		c, err = protoconf.EditConf(ctx, args[1], args[2])
-	} else {
+	if len(args) < 2 {
 		return "Invalid command", nil
+	}
+
+	switch args[1] {
+	case "get":
+		c, err = protoconf.GetConf(ctx)
+	case "set":
+		if len(args) != 4 {
+			return "Invalid command", nil
+		}
+		c, err = protoconf.EditConf(ctx, args[2], args[3])
+	case "auth":
+		if len(args) != 4 {
+			return "Invalid command", nil
+		}
+		c, err = protoconf.SetUserType(ctx, args[2], args[3])
 	}
 
 	if err != nil {

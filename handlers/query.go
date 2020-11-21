@@ -4,9 +4,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/SSHZ-ORG/dedicatus/dctx/protoconf"
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/models/sortmode"
-	"github.com/SSHZ-ORG/dedicatus/protoconf"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/net/context"

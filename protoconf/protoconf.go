@@ -4,10 +4,11 @@ import (
 	"strings"
 
 	"github.com/SSHZ-ORG/dedicatus/protoconf/pb"
-	"github.com/golang/protobuf/proto"
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
+	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 )
 
 type ProtoconfWrapper struct {
@@ -51,7 +52,7 @@ func EditConf(ctx context.Context, k, v string) (*pb.Protoconf, error) {
 			return err
 		}
 
-		lines := strings.Split(proto.MarshalTextString(c), "\n")
+		lines := strings.Split(prototext.Format(c), "\n")
 		for i, s := range lines {
 			if strings.HasPrefix(s, k+":") {
 				lines = append(lines[:i], lines[i+1:]...)
@@ -60,7 +61,7 @@ func EditConf(ctx context.Context, k, v string) (*pb.Protoconf, error) {
 		}
 
 		lines = append(lines, k+": "+v)
-		if err := proto.UnmarshalText(strings.Join(lines, "\n"), c); err != nil {
+		if err := prototext.Unmarshal([]byte(strings.Join(lines, "\n")), c); err != nil {
 			return err
 		}
 

@@ -14,11 +14,11 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/twapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
+	"google.golang.org/protobuf/encoding/prototext"
 )
 
 const (
@@ -659,7 +659,7 @@ func commandConfig(ctx context.Context, args []string) (string, error) {
 	if err != nil {
 		return err.Error(), nil
 	}
-	m := proto.MarshalTextString(c)
+	m := prototext.Format(c)
 	if m == "" {
 		return "(empty)", nil
 	}

@@ -12,13 +12,13 @@ require (
 	github.com/garyburd/go-oauth v0.0.0-20180319155456-bca2e7f09a17 // indirect
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.0.0-rc1.0.20201106042948-366879b11047
 	github.com/gojp/kana v0.1.0
-	github.com/golang/protobuf v1.4.3
 	github.com/gorilla/mux v1.8.0
 	github.com/qedus/nds v1.0.0
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 	golang.org/x/text v0.3.4
 	google.golang.org/api v0.35.0
 	google.golang.org/appengine v1.6.7
+	google.golang.org/protobuf v1.25.0
 )
 
 go 1.11

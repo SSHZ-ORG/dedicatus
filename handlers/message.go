@@ -64,6 +64,9 @@ func HandleMessage(ctx context.Context, message *tgbotapi.Message) (tgbotapi.Cha
 	if message.Video != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Video != nil) {
 		response, err = handleVideo(ctx, message)
 	}
+	if message.Contact != nil {
+		response, err = handleContact(ctx, message)
+	}
 
 	if strings.HasPrefix(message.Text, "/") {
 		args := strings.Fields(message.Text)
@@ -418,8 +421,7 @@ func commandQueryKG(ctx context.Context, args []string, message *tgbotapi.Messag
 	reply := makeReplyMessage(message, "```json\n"+encoded+"\n```")
 	reply.ParseMode = tgbotapi.ModeMarkdownV2
 	if inputName == name {
-		keyboard := tgbotapi.NewReplyKeyboard([]tgbotapi.KeyboardButton{tgbotapi.NewKeyboardButton(fmt.Sprintf("/n %s %s", name, id))})
-		keyboard.OneTimeKeyboard = true
+		keyboard := tgbotapi.NewOneTimeReplyKeyboard([]tgbotapi.KeyboardButton{tgbotapi.NewKeyboardButton(fmt.Sprintf("/n %s %s", name, id))})
 		keyboard.Selective = true
 		reply.ReplyMarkup = keyboard
 	}
@@ -643,4 +645,24 @@ func commandConfig(ctx context.Context, args []string) (string, error) {
 		return "(empty)", nil
 	}
 	return m, nil
+}
+
+func handleContact(ctx context.Context, message *tgbotapi.Message) (tgbotapi.Chattable, error) {
+	if !dctx.IsAdmin(ctx) {
+		return makeReplyMessage(message, errorMessageNotAdmin), nil
+	}
+
+	uid := message.Contact.UserID
+	a := dctx.ProtoconfFromContext(ctx).GetAuthConfig()
+	reply := makeReplyMessage(message, fmt.Sprintf("User %d\nType: %v", uid, a.GetUsers()[int64(uid)].String()))
+
+	keyboard := tgbotapi.NewOneTimeReplyKeyboard()
+	for t := range pb.AuthConfig_UserType_value {
+		kb := []tgbotapi.KeyboardButton{tgbotapi.NewKeyboardButton(fmt.Sprintf("/c auth %d %s", uid, t))}
+		keyboard.Keyboard = append(keyboard.Keyboard, kb)
+	}
+	keyboard.Selective = true
+	reply.ReplyMarkup = keyboard
+
+	return reply, nil
 }

@@ -609,11 +609,13 @@ func commandConfig(ctx context.Context, args []string) (string, error) {
 		return errorMessageNotAdmin, nil
 	}
 
+	usage := "Usage:\n/c get|set|auth"
+
 	var c *pb.Protoconf
 	var err error
 
 	if len(args) < 2 {
-		return "Invalid command", nil
+		return usage, nil
 	}
 
 	switch args[1] {
@@ -621,14 +623,16 @@ func commandConfig(ctx context.Context, args []string) (string, error) {
 		c = dctx.ProtoconfFromContext(ctx)
 	case "set":
 		if len(args) != 4 {
-			return "Invalid command", nil
+			return "Usage:\n/c set <Key> <Value>", nil
 		}
 		c, err = protoconf.EditConf(ctx, args[2], args[3])
 	case "auth":
 		if len(args) != 4 {
-			return "Invalid command", nil
+			return "Usage:\n/c auth <UserID> <UserType>", nil
 		}
 		c, err = protoconf.SetUserType(ctx, args[2], args[3])
+	default:
+		return usage, nil
 	}
 
 	if err != nil {

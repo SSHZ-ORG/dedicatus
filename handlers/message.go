@@ -28,18 +28,17 @@ const (
 )
 
 var commandMap = map[string]func(ctx context.Context, args []string) (string, error){
-	"/start":  commandStart,
-	"/me":     commandUserInfo,
-	"/n":      commandCreatePersonality,
-	"/s":      commandFindPersonality,
-	"/u":      commandUpdatePersonalityNickname,
-	"/a":      commandEditAlias,
-	"/c":      commandManageContributors,
-	"/stats":  commandStats,
-	"/tweet":  commandTweet,
-	"/fo":     commandUpdatePersonalityTwitterUserID,
-	"/ukt":    commandUnknownTwitterPersonalities,
-	"/config": commandConfig,
+	"/start": commandStart,
+	"/me":    commandUserInfo,
+	"/n":     commandCreatePersonality,
+	"/s":     commandFindPersonality,
+	"/u":     commandUpdatePersonalityNickname,
+	"/a":     commandEditAlias,
+	"/stats": commandStats,
+	"/tweet": commandTweet,
+	"/fo":    commandUpdatePersonalityTwitterUserID,
+	"/ukt":   commandUnknownTwitterPersonalities,
+	"/c":     commandConfig,
 }
 
 var complexCommandMap = map[string]func(ctx context.Context, args []string, message *tgbotapi.Message) (tgbotapi.Chattable, error){
@@ -399,42 +398,6 @@ func commandEditAlias(ctx context.Context, args []string) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("Updated Alias %s", s), nil
-}
-
-func commandManageContributors(ctx context.Context, args []string) (string, error) {
-	if !dctx.IsAdmin(ctx) {
-		return errorMessageNotAdmin, nil
-	}
-
-	if len(args) != 3 || (args[1] != "add" && args[1] != "delete") {
-		return "Usage:\n/c add|delete <UserId>\nExample: /c add 88888888", nil
-	}
-
-	c := tgapi.GetConfig(ctx)
-
-	newContributor, err := strconv.Atoi(args[2])
-	if err != nil {
-		return "Illegal UserID.", nil
-	}
-
-	switch args[1] {
-	case "add":
-		if c.IsContributor(newContributor) {
-			return "Is already a contributor.", nil
-		}
-		c.Contributors = append(c.Contributors, newContributor)
-	case "delete":
-		if !c.IsContributor(newContributor) {
-			return "Is not a contributor.", nil
-		}
-		c.Contributors = utils.Remove(c.Contributors, newContributor)
-	}
-
-	if err = tgapi.SetConfig(ctx, c); err != nil {
-		return "", err
-	}
-
-	return "Contributors updated", nil
 }
 
 func commandQueryKG(ctx context.Context, args []string, message *tgbotapi.Message) (tgbotapi.Chattable, error) {

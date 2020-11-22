@@ -40,13 +40,6 @@ func main() {
 func registerWebhook(w http.ResponseWriter, r *http.Request) {
 	ctx := dctx.NewContext(r)
 
-	err := tgapi.CreateConfig(ctx)
-	if err != nil {
-		log.Errorf(ctx, "%v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	bot := tgapi.BotFromContext(ctx)
 
 	if _, err := tgapi.RegisterWebhook(ctx, bot); err != nil {

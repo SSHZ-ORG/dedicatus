@@ -13,7 +13,7 @@ import (
 	"cloud.google.com/go/civil"
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/SSHZ-ORG/dedicatus/config"
-	"github.com/SSHZ-ORG/dedicatus/dctx/protoconf"
+	"github.com/SSHZ-ORG/dedicatus/dctx"
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
@@ -130,10 +130,7 @@ func isRandomlyTweetable(i *models.Inventory) bool {
 }
 
 func pickRandomInventory(ctx context.Context) (*models.Inventory, error) {
-	conf, err := protoconf.GetConf(ctx)
-	if err != nil {
-		return nil, err
-	}
+	conf := dctx.ProtoconfFromContext(ctx)
 
 	if rand.Float32() < conf.GetTwapiLeastRecentPoolProbability() {
 		log.Infof(ctx, "Won the lottery! Choosing something that was not tweeted recently...")

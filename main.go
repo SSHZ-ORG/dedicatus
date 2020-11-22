@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/SSHZ-ORG/dedicatus/config"
+	"github.com/SSHZ-ORG/dedicatus/dctx"
 	"github.com/SSHZ-ORG/dedicatus/handlers"
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/paths"
@@ -37,7 +38,7 @@ func main() {
 }
 
 func registerWebhook(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
+	ctx := dctx.NewContext(r)
 
 	err := tgapi.CreateConfig(ctx)
 	if err != nil {
@@ -69,7 +70,7 @@ func registerWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateFileMetadata(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
+	ctx := dctx.NewContext(r)
 
 	id := r.FormValue("id")
 	if id == "" {
@@ -88,7 +89,7 @@ func updateFileMetadata(w http.ResponseWriter, r *http.Request) {
 }
 
 func queueUpdateFileMetadata(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
+	ctx := dctx.NewContext(r)
 
 	ids, err := models.AllInventoriesStorageKeys(ctx)
 	if err != nil {
@@ -108,7 +109,7 @@ func queueUpdateFileMetadata(w http.ResponseWriter, r *http.Request) {
 }
 
 func rotateReservoir(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
+	ctx := dctx.NewContext(r)
 
 	err := models.RotateReservoir(ctx)
 	if err != nil {
@@ -119,7 +120,7 @@ func rotateReservoir(w http.ResponseWriter, r *http.Request) {
 }
 
 func postTweet(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
+	ctx := dctx.NewContext(r)
 	if _, err := twapi.SendInventoryToTwitter(ctx, r.FormValue("id")); err != nil {
 		log.Errorf(ctx, "twapi.SendInventoryToTwitter: %+v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -128,7 +129,7 @@ func postTweet(w http.ResponseWriter, r *http.Request) {
 }
 
 func webhook(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
+	ctx := dctx.NewContext(r)
 
 	bytes, _ := ioutil.ReadAll(r.Body)
 
@@ -145,17 +146,17 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 	var response tgbotapi.Chattable
 
 	if update.Message != nil {
-		ctx = tgapi.NewContext(ctx, update.Message.From)
+		dctx.AttachUserInSession(ctx, update.Message.From)
 		response, err = handlers.HandleMessage(ctx, update.Message)
 	}
 
 	if update.InlineQuery != nil {
-		ctx = tgapi.NewContext(ctx, update.InlineQuery.From)
+		dctx.AttachUserInSession(ctx, update.InlineQuery.From)
 		response, err = handlers.HandleInlineQuery(ctx, update.InlineQuery)
 	}
 
 	if update.ChosenInlineResult != nil {
-		ctx = tgapi.NewContext(ctx, update.ChosenInlineResult.From)
+		dctx.AttachUserInSession(ctx, update.ChosenInlineResult.From)
 		err = handlers.HandleChosenInlineResult(ctx, update)
 	}
 

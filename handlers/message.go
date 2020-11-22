@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/SSHZ-ORG/dedicatus/dctx"
 	"github.com/SSHZ-ORG/dedicatus/dctx/protoconf"
 	"github.com/SSHZ-ORG/dedicatus/dctx/protoconf/pb"
 	"github.com/SSHZ-ORG/dedicatus/kgapi"
@@ -175,7 +176,7 @@ func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *tgapi.
 }
 
 func handleTGFileCaption(ctx context.Context, tgFile *tgapi.TGFile, caption string) (string, error) {
-	if !tgapi.IsContributor(ctx) {
+	if !dctx.IsContributor(ctx) {
 		return errorMessageNotContributor, nil
 	}
 
@@ -183,7 +184,7 @@ func handleTGFileCaption(ctx context.Context, tgFile *tgapi.TGFile, caption stri
 
 	if args[0] == "/r" {
 		// Use the received document to replace some existing Inventory.
-		if !tgapi.IsAdmin(ctx) {
+		if !dctx.IsAdmin(ctx) {
 			return errorMessageNotAdmin, nil
 		}
 
@@ -240,11 +241,11 @@ func commandStart(ctx context.Context, args []string) (string, error) {
 }
 
 func commandUserInfo(ctx context.Context, args []string) (string, error) {
-	return fmt.Sprintf("User %d\nisAdmin: %v\nisContributor: %v", tgapi.UserFromContext(ctx).ID, tgapi.IsAdmin(ctx), tgapi.IsContributor(ctx)), nil
+	return fmt.Sprintf("User %d\nType: %v", dctx.UserFromContext(ctx).ID, dctx.UserTypeFromContext(ctx)), nil
 }
 
 func commandCreatePersonality(ctx context.Context, args []string) (string, error) {
-	if !tgapi.IsAdmin(ctx) {
+	if !dctx.IsAdmin(ctx) {
 		return errorMessageNotAdmin, nil
 	}
 
@@ -324,7 +325,7 @@ func commandFindPersonality(ctx context.Context, args []string) (string, error) 
 }
 
 func commandUpdatePersonalityNickname(ctx context.Context, args []string) (string, error) {
-	if !tgapi.IsAdmin(ctx) {
+	if !dctx.IsAdmin(ctx) {
 		return errorMessageNotAdmin, nil
 	}
 
@@ -367,7 +368,7 @@ func commandUpdatePersonalityNickname(ctx context.Context, args []string) (strin
 }
 
 func commandEditAlias(ctx context.Context, args []string) (string, error) {
-	if !tgapi.IsAdmin(ctx) {
+	if !dctx.IsAdmin(ctx) {
 		return errorMessageNotAdmin, nil
 	}
 
@@ -401,7 +402,7 @@ func commandEditAlias(ctx context.Context, args []string) (string, error) {
 }
 
 func commandManageContributors(ctx context.Context, args []string) (string, error) {
-	if !tgapi.IsAdmin(ctx) {
+	if !dctx.IsAdmin(ctx) {
 		return errorMessageNotAdmin, nil
 	}
 
@@ -437,7 +438,7 @@ func commandManageContributors(ctx context.Context, args []string) (string, erro
 }
 
 func commandQueryKG(ctx context.Context, args []string, message *tgbotapi.Message) (tgbotapi.Chattable, error) {
-	if !tgapi.IsAdmin(ctx) {
+	if !dctx.IsAdmin(ctx) {
 		return makeReplyMessage(message, errorMessageNotAdmin), nil
 	}
 
@@ -463,7 +464,7 @@ func commandQueryKG(ctx context.Context, args []string, message *tgbotapi.Messag
 }
 
 func commandStats(ctx context.Context, args []string) (string, error) {
-	if !tgapi.IsAdmin(ctx) {
+	if !dctx.IsAdmin(ctx) {
 		return errorMessageNotAdmin, nil
 	}
 
@@ -542,7 +543,7 @@ func commandSendMe(ctx context.Context, args []string, message *tgbotapi.Message
 }
 
 func commandTweet(ctx context.Context, args []string) (string, error) {
-	if !tgapi.IsAdmin(ctx) {
+	if !dctx.IsAdmin(ctx) {
 		return errorMessageNotAdmin, nil
 	}
 
@@ -558,7 +559,7 @@ func commandTweet(ctx context.Context, args []string) (string, error) {
 }
 
 func commandUpdatePersonalityTwitterUserID(ctx context.Context, args []string) (string, error) {
-	if !tgapi.IsAdmin(ctx) {
+	if !dctx.IsAdmin(ctx) {
 		return errorMessageNotAdmin, nil
 	}
 
@@ -595,7 +596,7 @@ func commandUpdatePersonalityTwitterUserID(ctx context.Context, args []string) (
 }
 
 func commandUnknownTwitterPersonalities(ctx context.Context, args []string) (string, error) {
-	if !tgapi.IsAdmin(ctx) {
+	if !dctx.IsAdmin(ctx) {
 		return errorMessageNotAdmin, nil
 	}
 
@@ -641,7 +642,7 @@ func commandUnknownTwitterPersonalities(ctx context.Context, args []string) (str
 }
 
 func commandConfig(ctx context.Context, args []string) (string, error) {
-	if !tgapi.IsAdmin(ctx) {
+	if !dctx.IsAdmin(ctx) {
 		return errorMessageNotAdmin, nil
 	}
 
@@ -654,7 +655,7 @@ func commandConfig(ctx context.Context, args []string) (string, error) {
 
 	switch args[1] {
 	case "get":
-		c, err = protoconf.GetConf(ctx)
+		c = dctx.ProtoconfFromContext(ctx)
 	case "set":
 		if len(args) != 4 {
 			return "Invalid command", nil

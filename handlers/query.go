@@ -4,7 +4,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/SSHZ-ORG/dedicatus/dctx/protoconf"
+	"github.com/SSHZ-ORG/dedicatus/dctx"
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/models/sortmode"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
@@ -72,14 +72,10 @@ func HandleInlineQuery(ctx context.Context, query *tgbotapi.InlineQuery) (*tgbot
 		return nil, err
 	}
 
-	conf, err := protoconf.GetConf(ctx)
-	if err != nil {
-		return nil, err
-	}
 	return &tgbotapi.InlineConfig{
 		InlineQueryID: query.ID,
 		Results:       constructInlineResults(inventories),
 		NextOffset:    nextCursor,
-		CacheTime:     int(conf.GetInlineQueryCacheTimeSec()),
+		CacheTime:     int(dctx.ProtoconfFromContext(ctx).GetInlineQueryCacheTimeSec()),
 	}, nil
 }

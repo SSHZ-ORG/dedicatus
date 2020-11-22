@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SSHZ-ORG/dedicatus/dctx"
 	"github.com/SSHZ-ORG/dedicatus/models/cursor"
 	"github.com/SSHZ-ORG/dedicatus/models/reservoir"
 	"github.com/SSHZ-ORG/dedicatus/models/sortmode"
@@ -70,7 +71,7 @@ func (i Inventory) ToString(ctx context.Context) (string, error) {
 	}
 
 	fileNameString := ""
-	if tgapi.IsContributor(ctx) {
+	if dctx.IsContributor(ctx) {
 		fileNameString = i.FileName + "\n"
 	}
 
@@ -185,7 +186,7 @@ func CreateOrUpdateInventory(ctx context.Context, tgFile *tgapi.TGFile, personal
 		err := nds.Get(ctx, key, i)
 
 		// This is an existing Inventory, only admins or original creator can update it.
-		if err == nil && !(tgapi.IsAdmin(ctx) || i.Creator == tgapi.UserFromContext(ctx).ID) {
+		if err == nil && !(dctx.IsAdmin(ctx) || i.Creator == dctx.UserFromContext(ctx).ID) {
 			return ErrorOnlyAdminCanUpdateInventory
 		}
 		if err != nil && err != datastore.ErrNoSuchEntity {
@@ -205,7 +206,7 @@ func CreateOrUpdateInventory(ctx context.Context, tgFile *tgapi.TGFile, personal
 		i.LastUsed = time.Now()
 
 		if i.Creator == 0 {
-			i.Creator = tgapi.UserFromContext(ctx).ID
+			i.Creator = dctx.UserFromContext(ctx).ID
 		}
 
 		i.ModelVersion = inventoryCurrentModelVersion

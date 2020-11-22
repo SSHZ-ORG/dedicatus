@@ -60,15 +60,11 @@ func HandleMessage(ctx context.Context, message *tgbotapi.Message) (tgbotapi.Cha
 
 	if message.Animation != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Animation != nil) {
 		response, err = handleAnimation(ctx, message)
-	}
-	if message.Video != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Video != nil) {
+	} else if message.Video != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Video != nil) {
 		response, err = handleVideo(ctx, message)
-	}
-	if message.Contact != nil {
+	} else if message.Contact != nil {
 		response, err = handleContact(ctx, message)
-	}
-
-	if strings.HasPrefix(message.Text, "/") {
+	} else if strings.HasPrefix(message.Text, "/") {
 		args := strings.Fields(message.Text)
 
 		if handler, ok := commandMap[args[0]]; ok {
@@ -653,11 +649,15 @@ func handleContact(ctx context.Context, message *tgbotapi.Message) (tgbotapi.Cha
 	}
 
 	uid := message.Contact.UserID
+	if uid == 0 {
+		return nil, nil
+	}
+
 	a := dctx.ProtoconfFromContext(ctx).GetAuthConfig()
 	reply := makeReplyMessage(message, fmt.Sprintf("User %d\nType: %v", uid, a.GetUsers()[int64(uid)].String()))
 
 	keyboard := tgbotapi.NewOneTimeReplyKeyboard()
-	for t := range pb.AuthConfig_UserType_value {
+	for _, t := range []pb.AuthConfig_UserType{pb.AuthConfig_USER, pb.AuthConfig_CONTRIBUTOR, pb.AuthConfig_ADMIN} {
 		kb := []tgbotapi.KeyboardButton{tgbotapi.NewKeyboardButton(fmt.Sprintf("/c auth %d %s", uid, t))}
 		keyboard.Keyboard = append(keyboard.Keyboard, kb)
 	}

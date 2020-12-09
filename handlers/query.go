@@ -36,7 +36,7 @@ func HandleInlineQuery(ctx context.Context, query *tgbotapi.InlineQuery) (*tgbot
 		if m := sortmode.ParseQuerySortMode(q); m != sortmode.Undefined {
 			// This token is valid sort mode flag.
 			queryMode = m
-		} else if strings.HasPrefix(q, "#") || strings.HasPrefix(q, "＃") {
+		} else if utils.IsTagFormatted(q) {
 			// This is a Tag query.
 			tqs = append(tqs, utils.TrimFirstRune(q)) // Need to remove `#`
 		} else {

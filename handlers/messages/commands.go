@@ -505,26 +505,36 @@ func commandTag(ctx context.Context, args []string) (string, error) {
 		return errorMessageNotContributor, nil
 	}
 
-	usage := "Usage:\n/t tag|untag <FileUniqueID> <TagName>"
+	usage := "Usage:\n/t tag|untag <FileUniqueIDs> #<TagName>"
 
-	var i *models.Inventory
-	var err error
-
-	if len(args) != 4 {
+	if len(args) < 4 {
 		return usage, nil
 	}
 
+	var f func(context.Context, []string, string) ([]string, error)
 	switch args[1] {
 	case "tag":
-		i, err = models.AttachTag(ctx, args[2], args[3])
+		f = models.AttachTags
 	case "untag":
-		i, err = models.DetachTag(ctx, args[2], args[3])
+		f = models.DetachTags
 	default:
 		return usage, nil
 	}
 
+	var fileUniqueIDs []string
+	var tagName string
+
+	for _, token := range args[2:] {
+		if utils.IsTagFormatted(token) {
+			tagName = utils.TrimFirstRune(token)
+		} else {
+			fileUniqueIDs = append(fileUniqueIDs, token)
+		}
+	}
+
+	updatedIDs, err := f(ctx, fileUniqueIDs, tagName)
 	if err != nil {
 		return err.Error(), nil
 	}
-	return i.ToString(ctx)
+	return fmt.Sprintf("Updated %d Inventories [%s]", len(updatedIDs), strings.Join(updatedIDs, ", ")), nil
 }

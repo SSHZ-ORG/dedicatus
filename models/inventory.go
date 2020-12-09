@@ -444,37 +444,55 @@ func UpdateLastTweetInfo(ctx context.Context, fileUniqueID, tweetID string) erro
 	return err
 }
 
-func AttachTag(ctx context.Context, fileUniqueID, tagName string) (*Inventory, error) {
+func AttachTags(ctx context.Context, fileUniqueIDs []string, tagName string) ([]string, error) {
 	tk, _, err := mustFindTag(ctx, tagName)
 	if err != nil {
 		return nil, err
 	}
 
-	return readWriteInventory(ctx, fileUniqueID, func(ctx context.Context, i *Inventory) error {
-		if utils.FindKeyIndex(i.Tag, tk) != -1 {
-			// Already there, do nothing.
+	var updatedIDs []string
+	for _, fileUniqueID := range fileUniqueIDs {
+		_, err := readWriteInventory(ctx, fileUniqueID, func(ctx context.Context, i *Inventory) error {
+			if utils.FindKeyIndex(i.Tag, tk) != -1 {
+				// Already there, do nothing.
+				return nil
+			}
+			i.Tag = append(i.Tag, tk)
+			updatedIDs = append(updatedIDs, fileUniqueID)
 			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
-		i.Tag = append(i.Tag, tk)
-		return nil
-	})
+	}
+
+	return updatedIDs, nil
 }
 
-func DetachTag(ctx context.Context, fileUniqueID, tagName string) (*Inventory, error) {
+func DetachTags(ctx context.Context, fileUniqueIDs []string, tagName string) ([]string, error) {
 	tk, _, err := mustFindTag(ctx, tagName)
 	if err != nil {
 		return nil, err
 	}
 
-	return readWriteInventory(ctx, fileUniqueID, func(ctx context.Context, i *Inventory) error {
-		idx := utils.FindKeyIndex(i.Tag, tk)
-		if idx == -1 {
-			// Not there, do nothing.
+	var updatedIDs []string
+	for _, fileUniqueID := range fileUniqueIDs {
+		_, err := readWriteInventory(ctx, fileUniqueID, func(ctx context.Context, i *Inventory) error {
+			idx := utils.FindKeyIndex(i.Tag, tk)
+			if idx == -1 {
+				// Not there, do nothing.
+				return nil
+			}
+			i.Tag = append(i.Tag[:idx], i.Tag[idx+1:]...)
+			updatedIDs = append(updatedIDs, fileUniqueID)
 			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
-		i.Tag = append(i.Tag[:idx], i.Tag[idx+1:]...)
-		return nil
-	})
+	}
+
+	return updatedIDs, nil
 }
 
 func RandomInventories(ctx context.Context, count int) ([]*Inventory, error) {

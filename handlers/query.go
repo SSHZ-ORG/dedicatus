@@ -8,6 +8,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/models/sortmode"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
+	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
@@ -24,50 +25,77 @@ func constructInlineResults(inventories []*models.Inventory) []interface{} {
 func HandleInlineQuery(ctx context.Context, query *tgbotapi.InlineQuery) (*tgbotapi.InlineConfig, error) {
 	qs := strings.Fields(query.Query)
 
+	var pqs, tqs []string
+
 	// Determine QueryMode
 	queryMode := sortmode.UsageCountDesc
 	if len(qs) == 0 { // Globally last used
 		queryMode = sortmode.LastUsedDesc
 	}
-	for i, q := range qs {
+	for _, q := range qs {
 		if m := sortmode.ParseQuerySortMode(q); m != sortmode.Undefined {
 			// This token is valid sort mode flag.
-			queryMode = m                    // Use it
-			qs = append(qs[:i], qs[i+1:]...) // Delete this token so we don't use it to search personality
-			break                            // If there are more tokens after us, leave them there. It will be used to search personality and fail
+			queryMode = m
+		} else if strings.HasPrefix(q, "#") || strings.HasPrefix(q, "＃") {
+			// This is a Tag query.
+			tqs = append(tqs, utils.TrimFirstRune(q)) // Need to remove `#`
+		} else {
+			// Assume this is a Personality query.
+			pqs = append(pqs, q)
 		}
 	}
 
-	pKeys := make([][]*datastore.Key, len(qs))
-	errs := make([]error, len(qs))
 	wg := sync.WaitGroup{}
-	wg.Add(len(qs))
+	wg.Add(len(pqs) + len(tqs))
 
-	for i := range qs {
+	pKeys := make([][]*datastore.Key, len(pqs))
+	pErrs := make([]error, len(pqs))
+	for i := range pqs {
 		go func(i int) {
 			defer wg.Done()
-			pKeys[i], errs[i] = models.TryFindPersonalitiesWithKG(ctx, qs[i])
+			pKeys[i], pErrs[i] = models.TryFindPersonalitiesWithKG(ctx, pqs[i])
+		}(i)
+	}
+
+	tKeys := make([]*datastore.Key, len(tqs))
+	tErrs := make([]error, len(tqs))
+	for i := range tqs {
+		go func(i int) {
+			defer wg.Done()
+			tKeys[i], _, tErrs[i] = models.FindTag(ctx, tqs[i])
 		}(i)
 	}
 
 	wg.Wait()
 
-	var flattenKeys []*datastore.Key
-	for i := range qs {
-		if errs[i] != nil {
-			return nil, errs[i]
+	var flattenPKeys []*datastore.Key
+	for i := range pqs {
+		if pErrs[i] != nil {
+			return nil, pErrs[i]
 		}
 
 		if len(pKeys[i]) == 0 {
-			// One token is neither sort mode flag nor personality. Return empty result.
+			// This token is not personality. Return empty result.
 			return &tgbotapi.InlineConfig{
 				InlineQueryID: query.ID,
 			}, nil
 		}
-		flattenKeys = append(flattenKeys, pKeys[i]...)
+		flattenPKeys = append(flattenPKeys, pKeys[i]...)
 	}
 
-	inventories, nextCursor, err := models.QueryInventories(ctx, flattenKeys, queryMode, query.Offset, query.ID)
+	for i, k := range tKeys {
+		if tErrs[i] != nil {
+			return nil, tErrs[i]
+		}
+		if k == nil {
+			// This token is not a tag. Return empty result.
+			return &tgbotapi.InlineConfig{
+				InlineQueryID: query.ID,
+			}, nil
+		}
+	}
+
+	inventories, nextCursor, err := models.QueryInventories(ctx, flattenPKeys, tKeys, queryMode, query.Offset, query.ID)
 	if err != nil {
 		return nil, err
 	}

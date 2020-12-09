@@ -254,11 +254,14 @@ func CreateOrUpdateInventory(ctx context.Context, tgFile *tgapi.TGFile, personal
 	return i, err
 }
 
-func queryInventoryKeys(ctx context.Context, personalities []*datastore.Key, sortMode sortmode.SortMode, lastCursor, queryID string) ([]*datastore.Key, string, error) {
+func queryInventoryKeys(ctx context.Context, pKeys, tKeys []*datastore.Key, sortMode sortmode.SortMode, lastCursor, queryID string) ([]*datastore.Key, string, error) {
 	q := datastore.NewQuery(inventoryEntityKind).KeysOnly()
 
-	for _, personality := range personalities {
+	for _, personality := range pKeys {
 		q = q.Filter("Personality = ", personality)
+	}
+	for _, tag := range tKeys {
+		q = q.Filter("Tag = ", tag)
 	}
 
 	switch sortMode {
@@ -271,7 +274,7 @@ func queryInventoryKeys(ctx context.Context, personalities []*datastore.Key, sor
 	case sortmode.LastUsedAsc:
 		q = q.Order("LastUsed")
 	case sortmode.RandomDraw:
-		if len(personalities) == 0 {
+		if len(pKeys) == 0 && len(tKeys) == 0 {
 			// Global random. Use reservoir.
 			keys, err := reservoir.ReadReservoir(ctx, maxItems)
 			return keys, "", err
@@ -326,8 +329,8 @@ func bulkGetInventories(ctx context.Context, keys []*datastore.Key) ([]*Inventor
 	return is, nil
 }
 
-func QueryInventories(ctx context.Context, personalities []*datastore.Key, sortMode sortmode.SortMode, lastCursor, queryID string) ([]*Inventory, string, error) {
-	keys, newCursor, err := queryInventoryKeys(ctx, personalities, sortMode, lastCursor, queryID)
+func QueryInventories(ctx context.Context, pKeys, tKeys []*datastore.Key, sortMode sortmode.SortMode, lastCursor, queryID string) ([]*Inventory, string, error) {
+	keys, newCursor, err := queryInventoryKeys(ctx, pKeys, tKeys, sortMode, lastCursor, queryID)
 	if err != nil {
 		return nil, "", err
 	}

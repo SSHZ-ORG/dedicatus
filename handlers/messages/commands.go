@@ -32,6 +32,7 @@ var commandMap = map[string]func(ctx context.Context, args []string) (string, er
 	"/fo":    commandUpdatePersonalityTwitterUserID,
 	"/ukt":   commandUnknownTwitterPersonalities,
 	"/c":     commandConfig,
+	"/et":    commandEditTag,
 	"/t":     commandTag,
 }
 
@@ -449,12 +450,12 @@ func commandConfig(ctx context.Context, args []string) (string, error) {
 	return m, nil
 }
 
-func commandTag(ctx context.Context, args []string) (string, error) {
+func commandEditTag(ctx context.Context, args []string) (string, error) {
 	if !dctx.IsAdmin(ctx) {
 		return errorMessageNotAdmin, nil
 	}
 
-	usage := "Usage:\n/t create|add|delete|find|canonical"
+	usage := "Usage:\n/et create|add|delete|find|canonical"
 
 	var t *models.Tag
 	var err error
@@ -466,27 +467,27 @@ func commandTag(ctx context.Context, args []string) (string, error) {
 	switch args[1] {
 	case "create":
 		if len(args) != 3 {
-			return "Usage:\n/t create <Name>", nil
+			return "Usage:\n/et create <Name>", nil
 		}
 		_, t, err = models.CreateTag(ctx, args[2])
 	case "add":
 		if len(args) != 4 {
-			return "Usage:\n/t add <Name> <NewName>", nil
+			return "Usage:\n/et add <Name> <NewName>", nil
 		}
 		_, t, err = models.AddTagName(ctx, args[2], args[3])
 	case "delete":
 		if len(args) != 3 {
-			return "Usage:\n/t delete <Name>", nil
+			return "Usage:\n/et delete <Name>", nil
 		}
 		_, t, err = models.DeleteTag(ctx, args[2])
 	case "find":
 		if len(args) != 3 {
-			return "Usage:\n/t find <Name>", nil
+			return "Usage:\n/et find <Name>", nil
 		}
 		_, t, err = models.FindTag(ctx, args[2])
 	case "canonical":
 		if len(args) != 3 {
-			return "Usage:\n/t canonical <Name>", nil
+			return "Usage:\n/et canonical <Name>", nil
 		}
 		_, t, err = models.SetTagCanonicalName(ctx, args[2])
 	default:
@@ -497,4 +498,33 @@ func commandTag(ctx context.Context, args []string) (string, error) {
 		return err.Error(), nil
 	}
 	return t.ToString(), nil
+}
+
+func commandTag(ctx context.Context, args []string) (string, error) {
+	if !dctx.IsContributor(ctx) {
+		return errorMessageNotContributor, nil
+	}
+
+	usage := "Usage:\n/t tag|untag <FileUniqueID> <TagName>"
+
+	var i *models.Inventory
+	var err error
+
+	if len(args) != 4 {
+		return usage, nil
+	}
+
+	switch args[1] {
+	case "tag":
+		i, err = models.AttachTag(ctx, args[2], args[3])
+	case "untag":
+		i, err = models.DetachTag(ctx, args[2], args[3])
+	default:
+		return usage, nil
+	}
+
+	if err != nil {
+		return err.Error(), nil
+	}
+	return i.ToString(ctx)
 }

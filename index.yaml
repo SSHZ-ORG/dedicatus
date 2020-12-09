@@ -27,6 +27,31 @@ indexes:
 
   - kind: Inventory
     properties:
+      - name: Tag
+      - name: LastUsed
+
+  - kind: Inventory
+    properties:
+      - name: Tag
+      - name: LastUsed
+        direction: desc
+
+  - kind: Inventory
+    properties:
+      - name: Tag
+      - name: UsageCount
+      - name: LastUsed
+
+  - kind: Inventory
+    properties:
+      - name: Tag
+      - name: UsageCount
+        direction: desc
+      - name: LastUsed
+        direction: desc
+
+  - kind: Inventory
+    properties:
       - name: UsageCount
       - name: LastUsed
 

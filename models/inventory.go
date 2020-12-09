@@ -14,6 +14,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/scheduler"
 	"github.com/SSHZ-ORG/dedicatus/scheduler/metadatamode"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
+	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/qedus/nds"
 	"golang.org/x/net/context"
@@ -34,6 +35,7 @@ type Inventory struct {
 	FileName     string
 	FileType     string
 	Personality  []*datastore.Key
+	Tag          []*datastore.Key
 	Creator      int
 
 	UsageCount int64
@@ -64,6 +66,20 @@ func (i Inventory) PersonalityNames(ctx context.Context) ([]string, error) {
 	return pns, nil
 }
 
+func (i Inventory) TagNames(ctx context.Context) ([]string, error) {
+	ts := make([]*Tag, len(i.Tag))
+	err := nds.GetMulti(ctx, i.Tag, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	var tns []string
+	for _, t := range ts {
+		tns = append(tns, t.CanonicalName())
+	}
+	return tns, nil
+}
+
 func (i Inventory) ToString(ctx context.Context) (string, error) {
 	pns, err := i.PersonalityNames(ctx)
 	if err != nil {
@@ -75,12 +91,21 @@ func (i Inventory) ToString(ctx context.Context) (string, error) {
 		fileNameString = i.FileName + "\n"
 	}
 
+	tagsString := "(no tags)"
+	if len(i.Tag) > 0 {
+		tns, err := i.TagNames(ctx)
+		if err != nil {
+			return "", err
+		}
+		tagsString = strings.Join(tns, ", ")
+	}
+
 	lastTweetString := ""
 	if i.LastTweetID != "" {
 		lastTweetString = "\nLast Tweet: https://twitter.com/i/status/" + i.LastTweetID
 	}
 
-	return fmt.Sprintf("%sUniqueID: %s\n%x (%d bytes)\n[%s]%s", fileNameString, i.FileUniqueID, i.MD5Sum, i.FileSize, strings.Join(pns, ", "), lastTweetString), nil
+	return fmt.Sprintf("%sUniqueID: %s\n%x (%d bytes)\n[%s]\n%s%s", fileNameString, i.FileUniqueID, i.MD5Sum, i.FileSize, strings.Join(pns, ", "), tagsString, lastTweetString), nil
 }
 
 func (i Inventory) SendToChat(ctx context.Context, chatID int64) (tgbotapi.Chattable, error) {
@@ -414,6 +439,39 @@ func UpdateLastTweetInfo(ctx context.Context, fileUniqueID, tweetID string) erro
 		return nil
 	})
 	return err
+}
+
+func AttachTag(ctx context.Context, fileUniqueID, tagName string) (*Inventory, error) {
+	tk, _, err := mustFindTag(ctx, tagName)
+	if err != nil {
+		return nil, err
+	}
+
+	return readWriteInventory(ctx, fileUniqueID, func(ctx context.Context, i *Inventory) error {
+		if utils.FindKeyIndex(i.Tag, tk) != -1 {
+			// Already there, do nothing.
+			return nil
+		}
+		i.Tag = append(i.Tag, tk)
+		return nil
+	})
+}
+
+func DetachTag(ctx context.Context, fileUniqueID, tagName string) (*Inventory, error) {
+	tk, _, err := mustFindTag(ctx, tagName)
+	if err != nil {
+		return nil, err
+	}
+
+	return readWriteInventory(ctx, fileUniqueID, func(ctx context.Context, i *Inventory) error {
+		idx := utils.FindKeyIndex(i.Tag, tk)
+		if idx == -1 {
+			// Not there, do nothing.
+			return nil
+		}
+		i.Tag = append(i.Tag[:idx], i.Tag[idx+1:]...)
+		return nil
+	})
 }
 
 func RandomInventories(ctx context.Context, count int) ([]*Inventory, error) {

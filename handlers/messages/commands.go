@@ -32,6 +32,7 @@ var commandMap = map[string]func(ctx context.Context, args []string) (string, er
 	"/fo":    commandUpdatePersonalityTwitterUserID,
 	"/ukt":   commandUnknownTwitterPersonalities,
 	"/c":     commandConfig,
+	"/t":     commandTag,
 }
 
 var complexCommandMap = map[string]func(ctx context.Context, args []string, message *tgbotapi.Message) (tgbotapi.Chattable, error){
@@ -446,4 +447,54 @@ func commandConfig(ctx context.Context, args []string) (string, error) {
 		return "(empty)", nil
 	}
 	return m, nil
+}
+
+func commandTag(ctx context.Context, args []string) (string, error) {
+	if !dctx.IsAdmin(ctx) {
+		return errorMessageNotAdmin, nil
+	}
+
+	usage := "Usage:\n/t create|add|delete|find|canonical"
+
+	var t *models.Tag
+	var err error
+
+	if len(args) < 2 {
+		return usage, nil
+	}
+
+	switch args[1] {
+	case "create":
+		if len(args) != 3 {
+			return "Usage:\n/t create <Name>", nil
+		}
+		_, t, err = models.CreateTag(ctx, args[2])
+	case "add":
+		if len(args) != 4 {
+			return "Usage:\n/t add <Name> <NewName>", nil
+		}
+		_, t, err = models.AddTagName(ctx, args[2], args[3])
+	case "delete":
+		if len(args) != 3 {
+			return "Usage:\n/t delete <Name>", nil
+		}
+		_, t, err = models.DeleteTag(ctx, args[2])
+	case "find":
+		if len(args) != 3 {
+			return "Usage:\n/t find <Name>", nil
+		}
+		_, t, err = models.FindTag(ctx, args[2])
+	case "canonical":
+		if len(args) != 3 {
+			return "Usage:\n/t canonical <Name>", nil
+		}
+		_, t, err = models.SetTagCanonicalName(ctx, args[2])
+	default:
+		return usage, nil
+	}
+
+	if err != nil {
+		return err.Error(), nil
+	}
+	return t.ToString(), nil
 }

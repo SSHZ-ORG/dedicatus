@@ -9,6 +9,7 @@ const (
 	personalityEntityKind = "Personality"
 	inventoryEntityKind   = "Inventory"
 	aliasEntityKind       = "Alias"
+	tagEntityKind         = "Tag"
 )
 
 // If err is a MultiError, and everything inside is ErrNoSuchEntity, return as ErrNoSuchEntity

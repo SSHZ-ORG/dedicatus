@@ -73,3 +73,16 @@ A Telegram inline bot that searches GIFs of Seiyuu, running on Google App Engine
 
 * Telegram `answerInlineQuery.next_offset` supports max 64 bytes.
 * Datastore Cursor is much larger than that.
+
+#### Protobuf conventions
+
+`.proto` and `.pb.go` files should live in the same directory. For instance, use this to compile:
+
+```shell script
+protoc --go_out=paths=source_relative:. *.proto
+``` 
+
+
+Must use the new API (`google.golang.org/protobuf`), and `protoc-gen-go` must be at a revision after https://go-review.googlesource.com/c/protobuf/+/259901 
+
+Must use proto2 instead of proto3. The proto package should just start with `dedicatus.` and match the go package path.

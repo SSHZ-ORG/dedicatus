@@ -1,4 +1,4 @@
-package handlers
+package messages
 
 import (
 	"fmt"
@@ -11,20 +11,13 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/dctx/protoconf/pb"
 	"github.com/SSHZ-ORG/dedicatus/kgapi"
 	"github.com/SSHZ-ORG/dedicatus/models"
-	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/SSHZ-ORG/dedicatus/twapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/log"
 	"google.golang.org/protobuf/encoding/prototext"
-)
-
-const (
-	errorMessageNotAdmin       = "Only admins can do this, sorry."
-	errorMessageNotContributor = "Only contributors can do this, sorry."
 )
 
 var commandMap = map[string]func(ctx context.Context, args []string) (string, error){
@@ -44,194 +37,6 @@ var commandMap = map[string]func(ctx context.Context, args []string) (string, er
 var complexCommandMap = map[string]func(ctx context.Context, args []string, message *tgbotapi.Message) (tgbotapi.Chattable, error){
 	"/kg":     commandQueryKG,
 	"/sendme": commandSendMe,
-}
-
-func makeReplyMessage(message *tgbotapi.Message, reply string) *tgbotapi.MessageConfig {
-	c := tgbotapi.NewMessage(message.Chat.ID, reply)
-	c.ReplyToMessageID = message.MessageID
-	c.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
-	c.DisableWebPagePreview = true
-	return &c
-}
-
-func HandleMessage(ctx context.Context, message *tgbotapi.Message) (tgbotapi.Chattable, error) {
-	var response tgbotapi.Chattable
-	var err error
-
-	if message.Animation != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Animation != nil) {
-		response, err = handleAnimation(ctx, message)
-	} else if message.Video != nil || (message.ReplyToMessage != nil && message.ReplyToMessage.Video != nil) {
-		response, err = handleVideo(ctx, message)
-	} else if message.Contact != nil {
-		response, err = handleContact(ctx, message)
-	} else if strings.HasPrefix(message.Text, "/") {
-		args := strings.Fields(message.Text)
-
-		if handler, ok := commandMap[args[0]]; ok {
-			res := ""
-			res, err = handler(ctx, args)
-			response = makeReplyMessage(message, res)
-		} else if handler, ok := complexCommandMap[args[0]]; ok {
-			response, err = handler(ctx, args, message)
-		} else {
-			response = makeReplyMessage(message, "Command not recognized.")
-		}
-	}
-
-	if err != nil {
-		// Don't cause retry. Log and respond that we have an internal error.
-		log.Errorf(ctx, "%v", err)
-		response = makeReplyMessage(message, "Your action triggered an internal server error.")
-	}
-
-	return response, nil
-}
-
-func handleAnimation(ctx context.Context, message *tgbotapi.Message) (tgbotapi.Chattable, error) {
-	animation := message.Animation
-	if message.ReplyToMessage != nil && message.ReplyToMessage.Animation != nil {
-		animation = message.ReplyToMessage.Animation
-	}
-
-	tgFile := tgapi.TGFileFromChatAnimation(animation)
-	return handleTGFile(ctx, message, tgFile)
-}
-
-func handleVideo(ctx context.Context, message *tgbotapi.Message) (tgbotapi.Chattable, error) {
-	video := message.Video
-	if message.ReplyToMessage != nil && message.ReplyToMessage.Video != nil {
-		video = message.ReplyToMessage.Video
-	}
-
-	tgFile := tgapi.TGFileFromVideo(video)
-	return handleTGFile(ctx, message, tgFile)
-}
-
-func handleTGFile(ctx context.Context, message *tgbotapi.Message, tgFile *tgapi.TGFile) (tgbotapi.Chattable, error) {
-	caption := message.Caption
-	if message.ReplyToMessage != nil {
-		caption = message.Text
-	}
-
-	replyMessages := []string{"Received:\n" + tgFile.FileName + "\nUniqueID: " + tgFile.FileUniqueID}
-
-	allowUpdate := true
-
-	// Check MimeType. Both MPEG4_GIF and Video have to be video/mp4 for now.
-	if tgFile.MimeType != "video/mp4" {
-		replyMessages = append(replyMessages, fmt.Sprintf("Unexpected file type %s, disallowing update.", tgFile.MimeType))
-		allowUpdate = false
-	}
-
-	// Match Inventory
-	i, err := models.TryGetInventoryByTgFile(ctx, tgFile)
-	if err != nil {
-		if err == models.ErrorHashConflict {
-			replyMessages = append(replyMessages, "Hash conflict!")
-			allowUpdate = false
-		} else if err != datastore.ErrNoSuchEntity {
-			return nil, err
-		}
-	}
-
-	if i != nil {
-		// It matched to some existing Inventory, pretend that we received the existing one.
-		tgFile.FileUniqueID = i.FileUniqueID
-		tgFile.FileID = i.FileID
-
-		s, err := i.ToString(ctx)
-		if err != nil {
-			return nil, err
-		}
-		replyMessages = append(replyMessages, "\nMatched to:\n"+s)
-	} else {
-		replyMessages = append(replyMessages, "\nNo matching Inventory found.")
-	}
-
-	// OK, we either didn't know this Inventory before, or it matches something without hash conflict.
-	if allowUpdate {
-		if caption != "" {
-			// Update Inventory, if instructed
-			resp, err := handleTGFileCaption(ctx, tgFile, caption)
-			if err != nil {
-				return nil, err
-			}
-			replyMessages = append(replyMessages, "\n"+resp)
-		} else {
-			if i != nil && i.FileName == "" && tgFile.FileName != "" {
-				// Existing Inventory but we don't know FileName, and we know FileName now. Backfill the field.
-				if err := models.OverrideFileName(ctx, i.FileUniqueID, tgFile.FileName); err != nil {
-					return nil, err
-				}
-			}
-		}
-	}
-
-	if len(replyMessages) > 0 {
-		return makeReplyMessage(message, strings.Join(replyMessages, "\n")), nil
-	}
-	return nil, nil
-}
-
-func handleTGFileCaption(ctx context.Context, tgFile *tgapi.TGFile, caption string) (string, error) {
-	if !dctx.IsContributor(ctx) {
-		return errorMessageNotContributor, nil
-	}
-
-	args := strings.Fields(caption)
-
-	if args[0] == "/r" {
-		// Use the received document to replace some existing Inventory.
-		if !dctx.IsAdmin(ctx) {
-			return errorMessageNotAdmin, nil
-		}
-
-		if len(args) != 2 {
-			return "Usage:\n/r <OldFileUniqueID>", nil
-		}
-
-		oldFileUniqueID := args[1]
-		i, err := models.ReplaceFileID(ctx, oldFileUniqueID, tgFile)
-		if err != nil {
-			if err == datastore.ErrNoSuchEntity {
-				return "Old Inventory not found", nil
-			}
-			return "", err
-		}
-
-		s, err := i.ToString(ctx)
-		if err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("Replaced Inventory %s with:\n%s", oldFileUniqueID, s), nil
-	}
-
-	var personalityKeys []*datastore.Key
-	for _, nickname := range args {
-		key, err := models.TryFindOnlyPersonality(ctx, nickname)
-		if err != nil {
-			return "", err
-		}
-
-		if key == nil {
-			return fmt.Sprintf("Unknown Personality %s", nickname), nil
-		}
-		personalityKeys = append(personalityKeys, key)
-	}
-
-	i, err := models.CreateOrUpdateInventory(ctx, tgFile, personalityKeys)
-	if err != nil {
-		if err == models.ErrorOnlyAdminCanUpdateInventory {
-			return "This GIF is already known. Only admins or its creator can modify it now.", nil
-		}
-		return "", err
-	}
-
-	s, err := i.ToString(ctx)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("Updated to:\n%s", s), nil
 }
 
 func commandStart(ctx context.Context, args []string) (string, error) {
@@ -641,28 +446,4 @@ func commandConfig(ctx context.Context, args []string) (string, error) {
 		return "(empty)", nil
 	}
 	return m, nil
-}
-
-func handleContact(ctx context.Context, message *tgbotapi.Message) (tgbotapi.Chattable, error) {
-	if !dctx.IsAdmin(ctx) {
-		return makeReplyMessage(message, errorMessageNotAdmin), nil
-	}
-
-	uid := message.Contact.UserID
-	if uid == 0 {
-		return nil, nil
-	}
-
-	a := dctx.ProtoconfFromContext(ctx).GetAuthConfig()
-	reply := makeReplyMessage(message, fmt.Sprintf("User %d\nType: %v", uid, a.GetUsers()[int64(uid)].String()))
-
-	keyboard := tgbotapi.NewOneTimeReplyKeyboard()
-	for _, t := range []pb.AuthConfig_UserType{pb.AuthConfig_USER, pb.AuthConfig_CONTRIBUTOR, pb.AuthConfig_ADMIN} {
-		kb := []tgbotapi.KeyboardButton{tgbotapi.NewKeyboardButton(fmt.Sprintf("/c auth %d %s", uid, t))}
-		keyboard.Keyboard = append(keyboard.Keyboard, kb)
-	}
-	keyboard.Selective = true
-	reply.ReplyMarkup = keyboard
-
-	return reply, nil
 }

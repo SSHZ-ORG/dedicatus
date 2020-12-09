@@ -10,6 +10,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/config"
 	"github.com/SSHZ-ORG/dedicatus/dctx"
 	"github.com/SSHZ-ORG/dedicatus/handlers"
+	"github.com/SSHZ-ORG/dedicatus/handlers/messages"
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/SSHZ-ORG/dedicatus/paths"
 	"github.com/SSHZ-ORG/dedicatus/scheduler"
@@ -140,7 +141,7 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 
 	if update.Message != nil {
 		dctx.AttachUserInSession(ctx, update.Message.From)
-		response, err = handlers.HandleMessage(ctx, update.Message)
+		response, err = messages.HandleMessage(ctx, update.Message)
 	}
 
 	if update.InlineQuery != nil {

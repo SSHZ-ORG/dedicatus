@@ -18,7 +18,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/SSHZ-ORG/dedicatus/twapi"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
 )
@@ -26,19 +26,20 @@ import (
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	r := mux.NewRouter()
-	r.HandleFunc(tgapi.TgWebhookPath(config.TgToken), webhook)
-	r.HandleFunc(paths.RegisterWebhook, registerWebhook)
-	r.HandleFunc(paths.UpdateFileMetadata, updateFileMetadata)
-	r.HandleFunc(paths.QueueUpdateFileMetadata, queueUpdateFileMetadata)
-	r.HandleFunc(paths.RotateReservoir, rotateReservoir)
-	r.HandleFunc(paths.PostTweet, postTweet)
+	r := httprouter.New()
+
+	r.POST(tgapi.TgWebhookPath(config.TgToken), webhook)
+	r.GET(paths.RegisterWebhook, registerWebhook)
+	r.POST(paths.UpdateFileMetadata, updateFileMetadata)
+	r.GET(paths.QueueUpdateFileMetadata, queueUpdateFileMetadata)
+	r.GET(paths.RotateReservoir, rotateReservoir)
+	r.GET(paths.PostTweet, postTweet)
 
 	http.Handle("/", r)
 	appengine.Main()
 }
 
-func registerWebhook(w http.ResponseWriter, r *http.Request) {
+func registerWebhook(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := dctx.NewContext(r)
 
 	bot := tgapi.BotFromContext(ctx)
@@ -63,7 +64,7 @@ func registerWebhook(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("OK"))
 }
 
-func updateFileMetadata(w http.ResponseWriter, r *http.Request) {
+func updateFileMetadata(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := dctx.NewContext(r)
 
 	id := r.FormValue("id")
@@ -82,7 +83,7 @@ func updateFileMetadata(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func queueUpdateFileMetadata(w http.ResponseWriter, r *http.Request) {
+func queueUpdateFileMetadata(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := dctx.NewContext(r)
 
 	ids, err := models.AllInventoriesStorageKeys(ctx)
@@ -102,7 +103,7 @@ func queueUpdateFileMetadata(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func rotateReservoir(w http.ResponseWriter, r *http.Request) {
+func rotateReservoir(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := dctx.NewContext(r)
 
 	err := models.RotateReservoir(ctx)
@@ -113,7 +114,7 @@ func rotateReservoir(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func postTweet(w http.ResponseWriter, r *http.Request) {
+func postTweet(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := dctx.NewContext(r)
 	if _, err := twapi.SendInventoryToTwitter(ctx, r.FormValue("id")); err != nil {
 		log.Errorf(ctx, "twapi.SendInventoryToTwitter: %+v", err)
@@ -122,7 +123,7 @@ func postTweet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func webhook(w http.ResponseWriter, r *http.Request) {
+func webhook(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := dctx.NewContext(r)
 
 	bytes, _ := ioutil.ReadAll(r.Body)

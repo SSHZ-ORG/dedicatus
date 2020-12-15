@@ -1,6 +1,10 @@
 runtime: go111
 
 handlers:
+  - url: /robots.txt
+    static_files: robots.txt
+    upload: robots.txt
+
   - url: /admin/.*
     script: auto
     secure: always

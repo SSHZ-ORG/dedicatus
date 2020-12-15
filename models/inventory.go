@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/SSHZ-ORG/dedicatus/dctx"
@@ -254,7 +255,7 @@ func CreateOrUpdateInventory(ctx context.Context, tgFile *tgapi.TGFile, personal
 	return i, err
 }
 
-func queryInventoryKeys(ctx context.Context, pKeys, tKeys []*datastore.Key, sortMode sortmode.SortMode, lastCursor, queryID string) ([]*datastore.Key, string, error) {
+func queryInventoryKeys(ctx context.Context, pKeys, tKeys []*datastore.Key, sortMode sortmode.SortMode, pageCursor, queryID string) ([]*datastore.Key, string, error) {
 	q := datastore.NewQuery(inventoryEntityKind).KeysOnly()
 
 	for _, personality := range pKeys {
@@ -283,7 +284,7 @@ func queryInventoryKeys(ctx context.Context, pKeys, tKeys []*datastore.Key, sort
 	}
 
 	var offset int
-	q, offset = cursor.Offset(ctx, q, lastCursor)
+	q, offset = cursor.Offset(ctx, q, pageCursor)
 	q = q.Limit(maxItems)
 
 	var keys []*datastore.Key
@@ -329,8 +330,75 @@ func bulkGetInventories(ctx context.Context, keys []*datastore.Key) ([]*Inventor
 	return is, nil
 }
 
-func QueryInventories(ctx context.Context, pKeys, tKeys []*datastore.Key, sortMode sortmode.SortMode, lastCursor, queryID string) ([]*Inventory, string, error) {
-	keys, newCursor, err := queryInventoryKeys(ctx, pKeys, tKeys, sortMode, lastCursor, queryID)
+func QueryInventories(ctx context.Context, query, pageCursor, queryID string) ([]*Inventory, string, error) {
+	qs := strings.Fields(query)
+
+	var pqs, tqs []string
+
+	queryMode := sortmode.UsageCountDesc
+	if len(qs) == 0 { // Globally last used
+		queryMode = sortmode.LastUsedDesc
+	}
+	for _, q := range qs {
+		if m := sortmode.ParseQuerySortMode(q); m != sortmode.Undefined {
+			// This token is valid sort mode flag.
+			queryMode = m
+		} else if utils.IsTagFormatted(q) {
+			// This is a Tag query.
+			tqs = append(tqs, utils.TrimFirstRune(q)) // Need to remove `#`
+		} else {
+			// Assume this is a Personality query.
+			pqs = append(pqs, q)
+		}
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(len(pqs) + len(tqs))
+
+	pKeys := make([][]*datastore.Key, len(pqs))
+	pErrs := make([]error, len(pqs))
+	for i := range pqs {
+		go func(i int) {
+			defer wg.Done()
+			pKeys[i], pErrs[i] = TryFindPersonalitiesWithKG(ctx, pqs[i])
+		}(i)
+	}
+
+	tKeys := make([]*datastore.Key, len(tqs))
+	tErrs := make([]error, len(tqs))
+	for i := range tqs {
+		go func(i int) {
+			defer wg.Done()
+			tKeys[i], _, tErrs[i] = FindTag(ctx, tqs[i])
+		}(i)
+	}
+
+	wg.Wait()
+
+	var flattenPKeys []*datastore.Key
+	for i := range pqs {
+		if pErrs[i] != nil {
+			return nil, "", pErrs[i]
+		}
+
+		if len(pKeys[i]) == 0 {
+			// This token is not personality. Return empty result.
+			return nil, "", nil
+		}
+		flattenPKeys = append(flattenPKeys, pKeys[i]...)
+	}
+
+	for i, k := range tKeys {
+		if tErrs[i] != nil {
+			return nil, "", tErrs[i]
+		}
+		if k == nil {
+			// This token is not a tag. Return empty result.
+			return nil, "", nil
+		}
+	}
+
+	keys, newCursor, err := queryInventoryKeys(ctx, flattenPKeys, tKeys, queryMode, pageCursor, queryID)
 	if err != nil {
 		return nil, "", err
 	}

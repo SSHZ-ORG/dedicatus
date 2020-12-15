@@ -14,6 +14,7 @@ require (
 	github.com/gojp/kana v0.1.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/qedus/nds v1.0.0
+	github.com/rs/xid v1.2.1
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 	golang.org/x/text v0.3.4
 	google.golang.org/api v0.35.0

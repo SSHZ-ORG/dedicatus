@@ -17,7 +17,7 @@ func constructInlineResults(inventories []*models.Inventory) []interface{} {
 }
 
 func HandleInlineQuery(ctx context.Context, query *tgbotapi.InlineQuery) (*tgbotapi.InlineConfig, error) {
-	inventories, nextCursor, err := models.QueryInventories(ctx, query.Query, query.Offset, query.ID)
+	inventories, nextCursor, err := models.QueryInventories(ctx, query.Query, query.Offset, query.ID, 50)
 	if err != nil {
 		return nil, err
 	}

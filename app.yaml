@@ -6,6 +6,11 @@ handlers:
     secure: always
     login: admin
 
+  - url: /webui/.*
+    script: auto
+    secure: always
+    login: required
+
   - url: /.*
     script: auto
     secure: always

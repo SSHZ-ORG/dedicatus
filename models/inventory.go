@@ -23,8 +23,6 @@ import (
 	"google.golang.org/appengine/log"
 )
 
-const maxItems = 50
-
 var (
 	ErrorOnlyAdminCanUpdateInventory = errors.New("Only admins can update an existing GIF.")
 	ErrorHashConflict                = errors.New("Hash conflict")
@@ -255,7 +253,7 @@ func CreateOrUpdateInventory(ctx context.Context, tgFile *tgapi.TGFile, personal
 	return i, err
 }
 
-func queryInventoryKeys(ctx context.Context, pKeys, tKeys []*datastore.Key, sortMode sortmode.SortMode, pageCursor, queryID string) ([]*datastore.Key, string, error) {
+func queryInventoryKeys(ctx context.Context, pKeys, tKeys []*datastore.Key, sortMode sortmode.SortMode, pageCursor, queryID string, maxItems int) ([]*datastore.Key, string, error) {
 	q := datastore.NewQuery(inventoryEntityKind).KeysOnly()
 
 	for _, personality := range pKeys {
@@ -330,7 +328,7 @@ func bulkGetInventories(ctx context.Context, keys []*datastore.Key) ([]*Inventor
 	return is, nil
 }
 
-func QueryInventories(ctx context.Context, query, pageCursor, queryID string) ([]*Inventory, string, error) {
+func QueryInventories(ctx context.Context, query, pageCursor, queryID string, maxItems int) ([]*Inventory, string, error) {
 	qs := strings.Fields(query)
 
 	var pqs, tqs []string
@@ -398,7 +396,7 @@ func QueryInventories(ctx context.Context, query, pageCursor, queryID string) ([
 		}
 	}
 
-	keys, newCursor, err := queryInventoryKeys(ctx, flattenPKeys, tKeys, queryMode, pageCursor, queryID)
+	keys, newCursor, err := queryInventoryKeys(ctx, flattenPKeys, tKeys, queryMode, pageCursor, queryID, maxItems)
 	if err != nil {
 		return nil, "", err
 	}
@@ -484,7 +482,7 @@ func OverrideFileName(ctx context.Context, fileUniqueID, fileName string) error 
 }
 
 func RotateReservoir(ctx context.Context) error {
-	if reservoir.TryRotateReservoir(ctx, maxItems) {
+	if reservoir.TryRotateReservoir(ctx, 50) {
 		return nil
 	}
 

@@ -11,4 +11,7 @@ const (
 	TwitterAPIKeySecret      = ""
 	TwitterAccessToken       = ""
 	TwitterAccessTokenSecret = ""
+
+	// WebUI won't work if this is not set
+	WebUIVideoURLPrefix = ""
 )

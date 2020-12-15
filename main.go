@@ -17,6 +17,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/scheduler/metadatamode"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/SSHZ-ORG/dedicatus/twapi"
+	"github.com/SSHZ-ORG/dedicatus/webui"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/julienschmidt/httprouter"
 	"google.golang.org/appengine"
@@ -34,6 +35,8 @@ func main() {
 	r.GET(paths.QueueUpdateFileMetadata, queueUpdateFileMetadata)
 	r.GET(paths.RotateReservoir, rotateReservoir)
 	r.GET(paths.PostTweet, postTweet)
+
+	r.GET(paths.WebUI, webui.Handler)
 
 	http.Handle("/", r)
 	appengine.Main()

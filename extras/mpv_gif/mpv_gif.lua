@@ -282,3 +282,10 @@ mp.add_key_binding("g", "set_gif_start", set_gif_start)
 mp.add_key_binding("G", "set_gif_end", set_gif_end)
 mp.add_key_binding("Ctrl+g", "make_mpeg4_gif", make_mpeg4_gif)
 mp.add_key_binding("Ctrl+G", "make_gif", make_gif)
+
+local function toggle_mpdecimate()
+    mp.command("vf toggle @mpvgifmpdecimate")
+end
+
+mp.commandv("vf", "add", "@mpvgifmpdecimate:!lavfi=mpdecimate")
+mp.add_key_binding("D", "toggle_mpdecimate", toggle_mpdecimate)

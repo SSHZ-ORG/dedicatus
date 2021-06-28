@@ -49,7 +49,7 @@ var tmpl = template.Must(template.New("template").Parse(`<!DOCTYPE html>
 		<tbody>
 			{{range $i := .Inventories}}
 			<tr>
-				<td><video controls><source src="{{$i.VideoURL}}" type="video/mp4"></video></td>
+				<td><video autoplay loop muted playsinline><source src="{{$i.VideoURL}}" type="video/mp4"></video></td>
 				<td><pre>{{$i.Description}}</pre></td>
 			</tr>
 			{{end}}

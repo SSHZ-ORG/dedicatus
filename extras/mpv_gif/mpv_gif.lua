@@ -1,12 +1,11 @@
 -- Create animated GIFs with mpv and ffmpeg
--- Usage: "g" to set start frame, "G" to set end frame, "Ctrl+g" to create MPEG4_GIF, "Ctrl+G" to create GIF.
+-- Usage: "g" to set start frame, "G" to set end frame, "Ctrl+g" to create MPEG4_GIF, "Ctrl+G" to create mp4 with sound.
 
 -- Credits: This is largely inspired by https://gist.github.com/Ruin0x11/8fae0a9341b41015935f76f913b28d2a
 
 local msg = require 'mp.msg'
 local utils = require 'mp.utils'
 
-local gif_filters = "fps=24"
 local mpeg4_gif_filters = ""
 local standard_filters = "setsar=1:1"
 
@@ -239,19 +238,12 @@ local function make_gif_internal(use_mpeg4)
         msg.info(args)
         os.execute(args)
     else
-        -- Real GIF
-        output_file_path = detect_output_file_path(containing_path, output_filename, "gif")
+        -- MP4
+        output_file_path = detect_output_file_path(containing_path, output_filename, "a.mp4")
 
-        local filters = construct_filter(gif_filters, 540)
-        local temp_palette_path = os.tmpname() .. ".png"
+        local filters = construct_filter(mpeg4_gif_filters, 1080)
 
-        -- first, create the palette
-        local args = string.format("ffmpeg -v warning %s -vf %s -y %s", input_and_seeking_args, wrap_param(filters .. ",palettegen"), wrap_param(esc(temp_palette_path)))
-        msg.info(args)
-        os.execute(args)
-
-        -- then, create GIF
-        args = string.format("ffmpeg -v warning %s -i %s -lavfi %s -y %s", input_and_seeking_args, wrap_param(esc(temp_palette_path)), wrap_param(filters .. "[x]; [x][1:v] paletteuse"), wrap_param(esc(output_file_path)))
+        local args = string.format("ffmpeg -v warning %s -map_chapters -1 -c:v libx264 -pix_fmt yuv420p -filter:v %s -y %s", input_and_seeking_args, wrap_param(filters), wrap_param(esc(output_file_path)))
         msg.info(args)
         os.execute(args)
     end

@@ -25,13 +25,13 @@ Open your file with `mpv`. For BD / DVD, don't open it as `bd://` or `dvd://` de
 
 During playback, press <kbd>G</kbd> to set start time, and press <kbd>Shift</kbd>+<kbd>G</kbd> to set end time. Note that start time is inclusive but end time is exclusive. With the default keybinding, you can press <kbd>,</kbd> and <kbd>.</kbd> to jump by one frame.
 
-Press <kbd>Ctrl</kbd>+<kbd>G</kbd> to create a MPEG4_GIF for Telegram, and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> to create an actual GIF for other usage.
+Press <kbd>Ctrl</kbd>+<kbd>G</kbd> to create a MPEG4_GIF for Telegram, and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> to create a MP4 with audio.
 
 The created file will by default be put in the same directory of the original file, but if that is not writable (like if you are playing back a DVD or from a readonly network mount), it gets written to your home directory (\*nix: `~`, Windows: `%USERPROFILE%`).
 
 ## Notes
 
-MPEG4_GIF is limited to 720p, and GIF is limited to 540p. This is based on Telegram's behavior. `mp4` files that are larger than this will get sent as a video instead of a GIF.
+MPEG4_GIF is limited to 720p, and MP4 (with audio) is limited to 1080p. This is based on Telegram's behavior. `mp4` files that are larger than this will get sent as a video instead of a GIF.
 
 We also convert everything to `yuv420p`, because `yuv420p10le` sometimes breaks the Android client.
 

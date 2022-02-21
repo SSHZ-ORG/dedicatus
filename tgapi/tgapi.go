@@ -24,8 +24,8 @@ func BotFromContext(ctx context.Context) *tgbotapi.BotAPI {
 	return bot
 }
 
-func RegisterWebhook(ctx context.Context, bot *tgbotapi.BotAPI) (tgbotapi.APIResponse, error) {
-	c := tgbotapi.NewWebhook(fmt.Sprintf("https://%s%s", appengine.DefaultVersionHostname(ctx), TgWebhookPath(bot.Token)))
+func RegisterWebhook(ctx context.Context, bot *tgbotapi.BotAPI) (*tgbotapi.APIResponse, error) {
+	c, _ := tgbotapi.NewWebhook(fmt.Sprintf("https://%s%s", appengine.DefaultVersionHostname(ctx), TgWebhookPath(bot.Token)))
 	return bot.Request(c)
 }
 

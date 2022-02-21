@@ -35,7 +35,7 @@ type Inventory struct {
 	FileType     string
 	Personality  []*datastore.Key
 	Tag          []*datastore.Key
-	Creator      int
+	Creator      int64
 
 	UsageCount int64
 	LastUsed   time.Time

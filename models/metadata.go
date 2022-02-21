@@ -104,7 +104,7 @@ func updateFileMetadataReadFileName(ctx context.Context, oldStorageKey string, i
 	bot := tgapi.BotFromContext(ctx)
 
 	// Let's spam the init admin to get FileName.
-	a := tgbotapi.NewAnimationShare(config.InitAdminID, i.FileID)
+	a := tgbotapi.NewAnimation(config.InitAdminID, tgbotapi.FileID(i.FileID))
 	a.Caption = "Reading FileName for " + i.FileUniqueID
 	m, err := bot.Send(a)
 	if err != nil {

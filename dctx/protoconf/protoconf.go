@@ -1,6 +1,7 @@
 package protoconf
 
 import (
+	"context"
 	"errors"
 	"strconv"
 	"strings"
@@ -8,8 +9,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/config"
 	"github.com/SSHZ-ORG/dedicatus/dctx/protoconf/pb"
 	"github.com/qedus/nds"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/v2/datastore"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 )

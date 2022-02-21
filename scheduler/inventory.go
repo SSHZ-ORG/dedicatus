@@ -1,12 +1,12 @@
 package scheduler
 
 import (
+	"context"
 	"net/url"
 
 	"github.com/SSHZ-ORG/dedicatus/paths"
 	"github.com/SSHZ-ORG/dedicatus/scheduler/metadatamode"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine/taskqueue"
+	"google.golang.org/appengine/v2/taskqueue"
 )
 
 const updateFileMetadataQueue = "update-file-metadata"

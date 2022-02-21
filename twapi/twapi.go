@@ -1,6 +1,7 @@
 package twapi
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -18,9 +19,8 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/dustin/go-humanize"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine/log"
-	"google.golang.org/appengine/urlfetch"
+	"google.golang.org/appengine/v2/log"
+	"google.golang.org/appengine/v2/urlfetch"
 )
 
 func getClient(ctx context.Context) *anaconda.TwitterApi {

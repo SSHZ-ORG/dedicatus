@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"crypto/md5"
 	"errors"
 
@@ -10,10 +11,9 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/qedus/nds"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/v2"
+	"google.golang.org/appengine/v2/datastore"
+	"google.golang.org/appengine/v2/log"
 )
 
 var metadataUpdaters = map[metadatamode.MetadataMode]func(context.Context, string, *Inventory) error{

@@ -1,6 +1,6 @@
 package utils
 
-import "google.golang.org/appengine/datastore"
+import "google.golang.org/appengine/v2/datastore"
 
 func Contains(s []int, e int) bool {
 	for _, i := range s {

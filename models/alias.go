@@ -1,14 +1,14 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/gojp/kana"
 	"github.com/qedus/nds"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/v2/datastore"
 )
 
 type Alias struct {

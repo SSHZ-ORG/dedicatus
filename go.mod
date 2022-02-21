@@ -1,5 +1,7 @@
 module github.com/SSHZ-ORG/dedicatus
 
+go 1.15
+
 require (
 	cloud.google.com/go v0.77.0
 	cloud.google.com/go/storage v1.13.0
@@ -15,11 +17,11 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/qedus/nds v1.0.0
 	github.com/rs/xid v1.2.1
-	golang.org/x/net v0.0.0-20210220033124-5f55cee0dc0d
+	golang.org/x/net v0.0.0-20210220033124-5f55cee0dc0d // indirect
 	golang.org/x/text v0.3.5
 	google.golang.org/api v0.40.0
-	google.golang.org/appengine v1.6.7
+	google.golang.org/appengine/v2 v2.0.1
 	google.golang.org/protobuf v1.25.0
 )
 
-go 1.11
+replace github.com/qedus/nds => github.com/SSHZ-ORG/nds v1.0.1-0.20220220041449-5427bae4887c

@@ -1,12 +1,12 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/qedus/nds"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/v2/datastore"
 )
 
 const tagCurrentModelVersion = 0

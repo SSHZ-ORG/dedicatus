@@ -1,6 +1,7 @@
 package tgapi
 
 import (
+	"context"
 	"crypto/md5"
 	"errors"
 	"fmt"
@@ -9,9 +10,8 @@ import (
 
 	"github.com/SSHZ-ORG/dedicatus/config"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/urlfetch"
+	"google.golang.org/appengine/v2"
+	"google.golang.org/appengine/v2/urlfetch"
 )
 
 func BotFromContext(ctx context.Context) *tgbotapi.BotAPI {

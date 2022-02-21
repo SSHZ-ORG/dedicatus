@@ -1,13 +1,13 @@
 package dctx
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/SSHZ-ORG/dedicatus/dctx/protoconf"
 	"github.com/SSHZ-ORG/dedicatus/dctx/protoconf/pb"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine"
+	"google.golang.org/appengine/v2"
 )
 
 type contextKey int

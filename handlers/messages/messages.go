@@ -1,14 +1,14 @@
 package messages
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/SSHZ-ORG/dedicatus/dctx"
 	"github.com/SSHZ-ORG/dedicatus/dctx/protoconf/pb"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/v2/log"
 )
 
 const (

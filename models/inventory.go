@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"crypto/md5"
 	"errors"
 	"fmt"
@@ -18,9 +19,8 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/qedus/nds"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/v2/datastore"
+	"google.golang.org/appengine/v2/log"
 )
 
 var (

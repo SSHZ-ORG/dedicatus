@@ -20,8 +20,8 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/webui"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/julienschmidt/httprouter"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/v2"
+	"google.golang.org/appengine/v2/log"
 )
 
 func main() {

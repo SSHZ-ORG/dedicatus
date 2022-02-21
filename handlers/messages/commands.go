@@ -1,6 +1,7 @@
 package messages
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,9 +15,8 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/twapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/v2"
+	"google.golang.org/appengine/v2/datastore"
 	"google.golang.org/protobuf/encoding/prototext"
 )
 

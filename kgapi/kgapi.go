@@ -1,17 +1,17 @@
 package kgapi
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"time"
 	"unicode"
 
 	"github.com/SSHZ-ORG/dedicatus/config"
-	"golang.org/x/net/context"
 	"google.golang.org/api/kgsearch/v1"
 	"google.golang.org/api/option"
-	"google.golang.org/appengine/log"
-	"google.golang.org/appengine/memcache"
+	"google.golang.org/appengine/v2/log"
+	"google.golang.org/appengine/v2/memcache"
 )
 
 const kgMemcachePrefix = "D545:KG1:"

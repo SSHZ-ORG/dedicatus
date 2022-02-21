@@ -9,7 +9,7 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/models"
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/xid"
-	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/v2/log"
 )
 
 type page struct {

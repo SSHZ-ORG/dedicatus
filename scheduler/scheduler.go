@@ -1,6 +1,6 @@
 package scheduler
 
-import "google.golang.org/appengine/taskqueue"
+import "google.golang.org/appengine/v2/taskqueue"
 
 const maxTasksPerAddMulti = 100
 

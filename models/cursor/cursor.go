@@ -1,12 +1,12 @@
 package cursor
 
 import (
+	"context"
 	"strconv"
 	"strings"
 
-	"golang.org/x/net/context"
-	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/memcache"
+	"google.golang.org/appengine/v2/datastore"
+	"google.golang.org/appengine/v2/memcache"
 )
 
 const (

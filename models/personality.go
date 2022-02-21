@@ -1,13 +1,13 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/SSHZ-ORG/dedicatus/kgapi"
 	"github.com/qedus/nds"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/v2/datastore"
 )
 
 type Personality struct {

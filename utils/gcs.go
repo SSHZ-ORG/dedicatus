@@ -1,9 +1,10 @@
 package utils
 
 import (
+	"context"
+
 	"cloud.google.com/go/storage"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine"
+	"google.golang.org/appengine/v2"
 )
 
 const gcsFilePrefix = "TgFileV2/"

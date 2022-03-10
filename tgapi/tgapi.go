@@ -40,7 +40,7 @@ func FetchFileInfo(ctx context.Context, fileID string) (*tgbotapi.File, []byte, 
 		return nil, nil, err
 	}
 
-	res, err := http.Get(file.Link(config.TgToken))
+	res, err := urlfetch.Client(ctx).Get(file.Link(config.TgToken))
 	if err != nil {
 		return nil, nil, err
 	}

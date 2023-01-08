@@ -189,8 +189,8 @@ local function detect_edl_path(stream_path)
 
     -- TODO: Handle multiple streams.
     for i, segment in ipairs(segments) do
-        if not starts_with(segment, "!") then
-            -- This is a file path.
+        if (not starts_with(segment, "!")) and (not string.find(segment, "mime=audio")) then
+            -- This is a file path, and if it's YouTube, mime is not audio/*.
             if starts_with(segment, "%") then
                 -- This is the EDL style escape for comma.
                 local len_str = string.match(segment, "%%(%d+)%%")

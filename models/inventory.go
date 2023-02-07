@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -278,12 +279,14 @@ func queryInventoryKeys(ctx context.Context, pKeys, tKeys []*datastore.Key, sort
 			keys, err := reservoir.ReadReservoir(ctx, maxItems)
 			return keys, "", err
 		}
-		// Not implemented. Let it use whatever natural ordering for now.
+		// Use natural order, and do post query in-memory shuffle.
 	}
 
 	var offset int
-	q, offset = cursor.Offset(ctx, q, pageCursor)
-	q = q.Limit(maxItems)
+	if sortMode != sortmode.RandomDraw {
+		q, offset = cursor.Offset(ctx, q, pageCursor)
+		q = q.Limit(maxItems)
+	}
 
 	var keys []*datastore.Key
 	it := q.Run(ctx)
@@ -300,8 +303,17 @@ func queryInventoryKeys(ctx context.Context, pKeys, tKeys []*datastore.Key, sort
 		return nil, "", nil
 	}
 
+	if sortMode == sortmode.RandomDraw {
+		rand.Shuffle(len(keys), func(i, j int) {
+			keys[i], keys[j] = keys[j], keys[i]
+		})
+		if len(keys) > maxItems {
+			keys = keys[:maxItems]
+		}
+	}
+
 	newCursor := ""
-	if len(keys) == maxItems {
+	if sortMode != sortmode.RandomDraw && len(keys) == maxItems {
 		c, _ := it.Cursor()
 		newCursor = cursor.Store(ctx, c, queryID, offset+maxItems)
 	}

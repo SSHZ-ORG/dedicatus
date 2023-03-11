@@ -6,12 +6,6 @@ const (
 	InitAdminID = 88888888
 	ChannelID   = 42424242 // Set to 0 to disable
 
-	// Set the following keys to empty string to disable
-	TwitterAPIKey            = ""
-	TwitterAPIKeySecret      = ""
-	TwitterAccessToken       = ""
-	TwitterAccessTokenSecret = ""
-
 	// WebUI won't work if this is not set
 	WebUIVideoURLPrefix = ""
 )

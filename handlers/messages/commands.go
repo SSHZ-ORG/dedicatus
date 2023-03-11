@@ -3,7 +3,6 @@ package messages
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/dctx/protoconf/pb"
 	"github.com/SSHZ-ORG/dedicatus/kgapi"
 	"github.com/SSHZ-ORG/dedicatus/models"
-	"github.com/SSHZ-ORG/dedicatus/twapi"
 	"github.com/SSHZ-ORG/dedicatus/utils"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"google.golang.org/appengine/v2"
@@ -28,9 +26,6 @@ var commandMap = map[string]func(ctx context.Context, args []string) (string, er
 	"/u":     commandUpdatePersonalityNickname,
 	"/a":     commandEditAlias,
 	"/stats": commandStats,
-	"/tweet": commandTweet,
-	"/fo":    commandUpdatePersonalityTwitterUserID,
-	"/ukt":   commandUnknownTwitterPersonalities,
 	"/c":     commandConfig,
 	"/et":    commandEditTag,
 	"/t":     commandTag,
@@ -308,105 +303,6 @@ func commandSendMe(ctx context.Context, args []string, message *tgbotapi.Message
 	}
 
 	return i.SendToChat(ctx, message.Chat.ID)
-}
-
-func commandTweet(ctx context.Context, args []string) (string, error) {
-	if !dctx.IsAdmin(ctx) {
-		return errorMessageNotAdmin, nil
-	}
-
-	if len(args) != 2 {
-		return "Usage:\n/tweet <FileUniqueID>", nil
-	}
-
-	id, err := twapi.SendInventoryToTwitter(ctx, args[1])
-	if err != nil {
-		return err.Error(), nil
-	}
-	return "Posted " + id, nil
-}
-
-func commandUpdatePersonalityTwitterUserID(ctx context.Context, args []string) (string, error) {
-	if !dctx.IsAdmin(ctx) {
-		return errorMessageNotAdmin, nil
-	}
-
-	if len(args) != 3 {
-		return "Usage:\n/fo <CanonicalName> <TwitterScreenName>|-", nil
-	}
-
-	key, _, err := models.GetPersonalityByName(ctx, args[1])
-	if err != nil {
-		return "", err
-	}
-	if key == nil {
-		return fmt.Sprintf("Unknown Personality %s", args[1]), nil
-	}
-
-	screenName := args[2]
-	twitterUserID := ""
-
-	if screenName == models.PersonalityNoTwitterAccountPlaceholder {
-		twitterUserID = models.PersonalityNoTwitterAccountPlaceholder
-	} else {
-		twitterUserID, err = twapi.FollowUser(ctx, screenName)
-		if err != nil {
-			return err.Error(), nil
-		}
-	}
-
-	err = models.UpdateTwitterUserID(ctx, key, twitterUserID)
-	if err != nil {
-		return err.Error(), nil
-	}
-
-	return "Set TwitterUserID to " + twitterUserID, nil
-}
-
-func commandUnknownTwitterPersonalities(ctx context.Context, args []string) (string, error) {
-	if !dctx.IsAdmin(ctx) {
-		return errorMessageNotAdmin, nil
-	}
-
-	if len(args) != 2 {
-		return "Usage:\n/ukt <Limit>", nil
-	}
-
-	limit, err := strconv.Atoi(args[1])
-	if err != nil {
-		return err.Error(), nil
-	}
-
-	is, err := models.LastTweetedInventories(ctx, limit)
-	if err != nil {
-		return err.Error(), nil
-	}
-
-	var pks []*datastore.Key
-	for _, i := range is {
-		for _, p := range i.Personality {
-			if utils.FindKeyIndex(pks, p) == -1 {
-				pks = append(pks, p)
-			}
-		}
-	}
-
-	ps, err := models.GetPersonalities(ctx, pks)
-	if err != nil {
-		return err.Error(), nil
-	}
-
-	var os []string
-	for _, p := range ps {
-		if p.TwitterUserID == "" {
-			os = append(os, p.CanonicalName)
-		}
-	}
-
-	if len(os) == 0 {
-		return "(empty)", nil
-	}
-	return strings.Join(os, ", "), nil
 }
 
 func commandConfig(ctx context.Context, args []string) (string, error) {

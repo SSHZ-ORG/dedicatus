@@ -16,7 +16,6 @@ import (
 	"github.com/SSHZ-ORG/dedicatus/scheduler"
 	"github.com/SSHZ-ORG/dedicatus/scheduler/metadatamode"
 	"github.com/SSHZ-ORG/dedicatus/tgapi"
-	"github.com/SSHZ-ORG/dedicatus/twapi"
 	"github.com/SSHZ-ORG/dedicatus/webui"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/julienschmidt/httprouter"
@@ -34,7 +33,6 @@ func main() {
 	r.POST(paths.UpdateFileMetadata, updateFileMetadata)
 	r.GET(paths.QueueUpdateFileMetadata, queueUpdateFileMetadata)
 	r.GET(paths.RotateReservoir, rotateReservoir)
-	r.GET(paths.PostTweet, postTweet)
 
 	r.GET(paths.WebUI, webui.Handler)
 
@@ -112,15 +110,6 @@ func rotateReservoir(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 	err := models.RotateReservoir(ctx)
 	if err != nil {
 		log.Errorf(ctx, "models.RotateReservoir: %+v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func postTweet(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	ctx := dctx.NewContext(r)
-	if _, err := twapi.SendInventoryToTwitter(ctx, r.FormValue("id")); err != nil {
-		log.Errorf(ctx, "twapi.SendInventoryToTwitter: %+v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

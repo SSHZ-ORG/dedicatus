@@ -216,6 +216,9 @@ local function make_gif_internal(use_mpeg4)
     if starts_with(stream_path, "edl://") then
         -- EDL. Likely ytdl or something. Attempt to parse it ourselves.
         input_file_path = detect_edl_path(stream_path)
+    elseif string.find(stream_path, "://") then
+        -- Likely some network source.
+        input_file_path = stream_path
     else
         input_file_path = utils.join_path(mp.get_property("working-directory"), mp.get_property("path"))
     end
